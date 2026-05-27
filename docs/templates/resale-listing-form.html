@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resale Listing Form — L2L</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12pt; max-width: 210mm; margin: 20mm auto; color: #111; }
+    h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #555; margin-bottom: 24px; }
+    .ref-box { border: 2px solid #333; display: inline-block; padding: 8px 20px; float: right; font-size: 11pt; }
+    .section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 12px; }
+    .section h2 { font-size: 12pt; color: #333; margin-bottom: 10px; }
+    .field { margin-bottom: 10px; }
+    .field label { font-weight: bold; font-size: 10pt; display: block; margin-bottom: 2px; }
+    .field .line { border-bottom: 1px solid #333; min-height: 22px; padding: 2px 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .checkbox { width: 14px; height: 14px; border: 1px solid #333; display: inline-block; }
+    .sig-block { margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .sig-line { border-bottom: 1px solid #333; height: 24px; margin-top: 40px; }
+    .sig-label { font-size: 9pt; color: #555; margin-top: 4px; }
+    .notice { background: #f5f5f5; border: 1px solid #ccc; padding: 10px; font-size: 9pt; margin-top: 20px; }
+    @media print { body { margin: 10mm; } }
+  </style>
+</head>
+<body>
+
+<div style="overflow:hidden; margin-bottom: 16px;">
+  <h1>Land2Living — Resale Listing Form</h1>
+  <p class="subtitle">For stands and built properties within registered communal land</p>
+  <div class="ref-box">
+    Paper Ref: LST-____-____-___<br/>
+    Date: ________________________
+  </div>
+</div>
+
+<div class="section">
+  <h2>1. Seller Information</h2>
+  <div class="two-col">
+    <div class="field"><label>Seller full name</label><div class="line"></div></div>
+    <div class="field"><label>ID / Passport number</label><div class="line"></div></div>
+    <div class="field"><label>Resident ID (if registered)</label><div class="line"></div></div>
+    <div class="field"><label>Phone number</label><div class="line"></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>2. Stand / Property Details</h2>
+  <div class="two-col">
+    <div class="field"><label>Stand ID / local reference</label><div class="line"></div></div>
+    <div class="field"><label>PTO reference number</label><div class="line"></div></div>
+  </div>
+  <div class="field"><label>Location / address description</label><div class="line"></div><div class="line" style="margin-top:4px;"></div></div>
+  <div class="field" style="margin-top:8px;">
+    <label>Listing type</label>
+    <div class="checkbox-row"><div class="checkbox"></div> Built property (house / structure)</div>
+    <div class="checkbox-row"><div class="checkbox"></div> Vacant stand (land only)</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>3. Asking Price</h2>
+  <div class="two-col">
+    <div class="field"><label>Asking price (ZAR)</label><div class="line"></div></div>
+    <div class="field" style="padding-top: 20px;">
+      <div class="checkbox-row"><div class="checkbox"></div> Price is negotiable</div>
+    </div>
+  </div>
+  <div class="field"><label>Description of property (size, features, condition)</label>
+    <div class="line"></div><div class="line" style="margin-top:4px;"></div><div class="line" style="margin-top:4px;"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>4. Seller Declaration</h2>
+  <p style="font-size:10pt;">I, the undersigned, declare that I am the lawful occupant of the above stand, that I hold a valid PTO issued by the council, and that I have the right to list this property for resale subject to council approval.</p>
+</div>
+
+<div class="sig-block">
+  <div>
+    <div class="sig-line"></div>
+    <div class="sig-label">Seller signature &amp; date</div>
+  </div>
+  <div>
+    <div class="sig-line"></div>
+    <div class="sig-label">Council witness / foot soldier signature &amp; date</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>5. Council Approval (to be completed by council secretary)</h2>
+  <div class="checkbox-row" style="margin: 12px 0;"><div class="checkbox"></div> <strong>Approved</strong> — listing may be published</div>
+  <div class="checkbox-row" style="margin: 12px 0;"><div class="checkbox"></div> <strong>Rejected</strong> — reason:</div>
+  <div class="field"><div class="line"></div></div>
+  <div class="sig-block" style="margin-top: 24px;">
+    <div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Council secretary signature &amp; date</div>
+    </div>
+    <div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Council seal</div>
+    </div>
+  </div>
+</div>
+
+<div class="notice">
+  <strong>Office use:</strong> Back-entered into L2L system: <span style="display:inline-block; width:100px; border-bottom:1px solid #555;"></span> &nbsp; System listing ID: <span style="display:inline-block; width:140px; border-bottom:1px solid #555;"></span>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,40 @@
+{
+  "name": "land2living",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit --project tsconfig.scripts.json",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "check": "eslint . && npm run typecheck --workspaces --if-present && tsc --noEmit --project tsconfig.scripts.json && npm run test --workspaces --if-present",
+    "dev:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "dev:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "dev:reset": "docker compose -f infra/docker/docker-compose.yml down -v && docker compose -f infra/docker/docker-compose.yml up -d",
+    "dev:seed": "npx tsx scripts/seed-dev.ts",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:web": "npm run dev --workspace=apps/web-council",
+    "dev:pwa": "npm run dev --workspace=@l2l/mobile-pwa"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.10",
+    "eslint": "^9.18.0",
+    "eslint-plugin-import": "^2.31.0",
+    "pg": "^8.13.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

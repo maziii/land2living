@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.github
+.env
+.env.*
+!.env.example
+apps/web-council
+apps/mobile-pwa
+coverage
+*.log
+.DS_Store

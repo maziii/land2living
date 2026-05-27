@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build outputs
+dist/
+build/
+.vite/
+
+# Test coverage
+coverage/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Prisma
+prisma/migrations/dev.db
+prisma/dev.db
+
+# Generated Prisma clients (regenerated via npm run db:generate)
+apps/api/src/generated/
+
+# AWS
+.aws/
+
+# Docker override files (keep base, ignore local overrides)
+docker-compose.override.yml

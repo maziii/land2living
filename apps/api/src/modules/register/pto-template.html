@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Permission to Occupy — {{councilName}}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Georgia', serif;
+      color: #1a1a1a;
+      background: white;
+      width: 210mm;
+      min-height: 297mm;
+      padding: 20mm 20mm 25mm 20mm;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid #2d6a2d;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .crest-placeholder {
+      width: 60px;
+      height: 60px;
+      border: 2px solid #2d6a2d;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+    }
+    .header-text { text-align: center; flex: 1; }
+    .header-text h1 { font-size: 18px; color: #2d6a2d; font-weight: bold; }
+    .header-text h2 { font-size: 14px; color: #444; margin-top: 4px; }
+    .doc-type {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 22px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #2d6a2d;
+    }
+    .reference {
+      text-align: center;
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 24px;
+    }
+    .section {
+      margin-bottom: 20px;
+    }
+    .section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #2d6a2d;
+      font-weight: bold;
+      border-bottom: 1px solid #2d6a2d;
+      padding-bottom: 4px;
+      margin-bottom: 10px;
+    }
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .field { }
+    .field-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      margin-bottom: 2px;
+    }
+    .field-value {
+      font-size: 13px;
+      color: #1a1a1a;
+      font-weight: 500;
+    }
+    .declaration {
+      background: #f8faf8;
+      border: 1px solid #2d6a2d;
+      border-radius: 4px;
+      padding: 16px;
+      font-size: 12px;
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+    .signatures {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      margin-top: 32px;
+    }
+    .sig-block { }
+    .sig-line {
+      border-bottom: 1px solid #1a1a1a;
+      margin-bottom: 6px;
+      height: 40px;
+    }
+    .sig-label { font-size: 10px; color: #666; }
+    .sig-name { font-size: 11px; font-weight: bold; }
+    .footer {
+      position: absolute;
+      bottom: 15mm;
+      left: 20mm;
+      right: 20mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .footer-text { font-size: 9px; color: #aaa; }
+    .qr-section {
+      text-align: center;
+    }
+    .qr-section img {
+      width: 90px;
+      height: 90px;
+    }
+    .qr-label {
+      font-size: 8px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .allocation-date {
+      font-size: 24px;
+      font-weight: bold;
+      color: #2d6a2d;
+      text-align: center;
+      margin: 12px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="crest-placeholder">🏛</div>
+    <div class="header-text">
+      <h1>{{councilName}}</h1>
+      <h2>Permission to Occupy</h2>
+    </div>
+    <div class="crest-placeholder">🌿</div>
+  </div>
+
+  <div class="doc-type">Permission to Occupy</div>
+  <div class="reference">PTO Reference: {{ptoId}} &nbsp;|&nbsp; Issued: {{allocationDate}}</div>
+
+  <div class="section">
+    <div class="section-title">Occupant Details</div>
+    <div class="field-grid">
+      <div class="field">
+        <div class="field-label">Full Name</div>
+        <div class="field-value">{{residentName}}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Resident ID</div>
+        <div class="field-value" style="font-family: monospace; font-size: 11px;">{{residentId}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Stand Details</div>
+    <div class="field-grid">
+      <div class="field">
+        <div class="field-label">Address</div>
+        <div class="field-value">{{standAddress}}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Stand Reference</div>
+        <div class="field-value">{{standRef}}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Council</div>
+        <div class="field-value">{{councilName}}</div>
+      </div>
+      <div class="field">
+        <div class="field-label">Allocation Date</div>
+        <div class="field-value allocation-date">{{allocationDate}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="declaration">
+    This Permission to Occupy (PTO) is hereby granted by <strong>{{councilName}}</strong> to
+    <strong>{{residentName}}</strong> for the occupation of stand <strong>{{standAddress}}</strong>
+    (reference: {{standRef}}) within the jurisdiction of <strong>{{councilName}}</strong>,
+    effective from <strong>{{allocationDate}}</strong>. This document is digitally signed and
+    verifiable. The holder of this PTO is authorised to occupy the above stand in accordance
+    with the council's land allocation policy.
+  </div>
+
+  <div class="signatures">
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">Council Secretary</div>
+      <div class="sig-label">Authorised signatory — {{councilName}}</div>
+    </div>
+    <div class="sig-block">
+      <div class="sig-line"></div>
+      <div class="sig-name">{{residentName}}</div>
+      <div class="sig-label">Occupant signature</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div class="footer-text">
+      <div>Land2Living Digital Registry</div>
+      <div>Verify this PTO: scan QR code or visit the URL below</div>
+      <div style="font-family: monospace; font-size: 8px;">{{verificationUrl}}</div>
+    </div>
+    <div class="qr-section">
+      <img src="{{qrCodeDataUrl}}" alt="Verification QR Code" />
+      <div class="qr-label">Scan to verify</div>
+    </div>
+  </div>
+</body>
+</html>

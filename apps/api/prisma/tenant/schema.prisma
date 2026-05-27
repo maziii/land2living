@@ -1,0 +1,327 @@
+// Tenant-scoped schema: one copy of these tables exists per council (per tenant schema).
+// Run migrations with: prisma migrate deploy --schema prisma/tenant/schema.prisma
+// (DATABASE_URL must include the per-tenant search_path)
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator tenantClient {
+  provider = "prisma-client-js"
+  output   = "../../src/generated/tenant-client"
+}
+
+// ── Audit log ─────────────────────────────────────────────────────────────────
+// Append-only: UPDATE and DELETE are blocked at DB level via triggers.
+// See migration.sql for the trigger definitions.
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  actorUserId String?  @map("actor_user_id")
+  actorRole   String?  @map("actor_role")
+  eventType   String   @map("event_type")
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  payloadJson Json?    @map("payload_json")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+
+  @@index([eventType], map: "audit_events_event_type_idx")
+  @@index([entityType, entityId], map: "audit_events_entity_idx")
+  @@index([createdAt], map: "audit_events_created_at_idx")
+  @@map("audit_events")
+}
+
+// ── Document vault ────────────────────────────────────────────────────────────
+// Documents are stored in S3; this table holds metadata only.
+// type is enforced by a CHECK constraint in the migration (plain TEXT in Prisma
+// so the tenant-schema enum lives in each schema rather than in public).
+
+model Document {
+  id              String   @id @default(cuid())
+  createdAt       DateTime @default(now()) @map("created_at")
+  type            String
+  s3Key           String   @map("s3_key")
+  contentHash     String   @map("content_hash")
+  signature       String?
+  signedByTenant  Boolean  @default(false) @map("signed_by_tenant")
+  createdByUserId String   @map("created_by_user_id")
+
+  ptos PTO[]
+
+  @@index([type], map: "documents_type_idx")
+  @@index([createdByUserId], map: "documents_created_by_user_id_idx")
+  @@map("documents")
+}
+
+// ── Resident register ─────────────────────────────────────────────────────────
+// id_number is stored AES-256-GCM encrypted at the application layer.
+// Enum-like fields (gender, language_preference, verification_status) are
+// TEXT in Prisma; CHECK constraints in the migration enforce valid values.
+
+model Resident {
+  id                 String    @id @default(uuid())
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+  idNumber           String    @map("id_number")
+  firstName          String    @map("first_name")
+  lastName           String    @map("last_name")
+  otherNames         String?   @map("other_names")
+  dateOfBirth        DateTime? @map("date_of_birth") @db.Date
+  gender             String?
+  phoneNumber        String    @map("phone_number")
+  whatsappNumber     String?   @map("whatsapp_number")
+  languagePreference String    @map("language_preference")
+  consentDataCapture Boolean   @map("consent_data_capture")
+  consentMarketing   Boolean   @default(false) @map("consent_marketing")
+  notes              String?
+  capturedByUserId   String    @map("captured_by_user_id")
+  verificationStatus String    @default("unverified") @map("verification_status")
+  userId             String?   @unique @map("user_id")
+
+  occupancies    StandOccupancy[]
+  applications   LandApplication[]
+  ptos           PTO[]
+  resaleListings ResaleListing[]
+  resaleOffers   ResaleOffer[]
+
+  @@index([phoneNumber], map: "residents_phone_number_idx")
+  @@index([verificationStatus], map: "residents_verification_status_idx")
+  @@index([deletedAt], map: "residents_deleted_at_idx")
+  @@map("residents")
+}
+
+model Stand {
+  id                 String    @id @default(uuid())
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+  deletedAt          DateTime? @map("deleted_at")
+  localReference     String?   @map("local_reference")
+  gpsLatitude        Decimal   @map("gps_latitude")
+  gpsLongitude       Decimal   @map("gps_longitude")
+  boundaryGeojson    Json?     @map("boundary_geojson")
+  areaSquareMetres   Decimal?  @map("area_square_metres")
+  addressDescription String    @map("address_description")
+  villageOrSection   String    @map("village_or_section")
+  standType          String?   @map("stand_type")
+  photoS3Keys        Json      @default("[]") @map("photo_s3_keys")
+  priceZar           Decimal?  @map("price_zar")
+  notes              String?
+
+  occupancies    StandOccupancy[]
+  applications   LandApplication[]
+  ptos           PTO[]
+  resaleListings ResaleListing[]
+
+  @@index([villageOrSection], map: "stands_village_or_section_idx")
+  @@index([gpsLatitude, gpsLongitude], map: "stands_gps_idx")
+  @@index([deletedAt], map: "stands_deleted_at_idx")
+  @@map("stands")
+}
+
+model StandOccupancy {
+  id           String    @id @default(uuid())
+  createdAt    DateTime  @default(now()) @map("created_at")
+  endedAt      DateTime? @map("ended_at")
+  standId      String    @map("stand_id")
+  residentId   String    @map("resident_id")
+  relationship String
+  ptoId        String?   @map("pto_id")
+
+  stand    Stand    @relation(fields: [standId], references: [id])
+  resident Resident @relation(fields: [residentId], references: [id])
+
+  @@index([standId, endedAt], map: "stand_occupancies_stand_id_idx")
+  @@index([residentId], map: "stand_occupancies_resident_id_idx")
+  @@map("stand_occupancies")
+}
+
+// ── Land Applications (WP-03 extended) ───────────────────────────────────────
+// status: draft | submitted | under_review | approved | rejected | deferred | withdrawn
+// Wizard-first: applications are created as drafts and submitted when complete.
+// Legacy fields (applicationType, requestedLocationDescription, reason) kept for
+// backward compat with the field-portal direct-submit flow.
+
+model LandApplication {
+  id                           String    @id @default(uuid())
+  createdAt                    DateTime  @default(now()) @map("created_at")
+  updatedAt                    DateTime  @updatedAt @map("updated_at")
+  applicantResidentId          String    @map("applicant_resident_id")
+
+  // ── Legacy fields (field-portal flow) ──
+  applicationType              String?   @map("application_type")
+  requestedLocationDescription String?   @map("requested_location_description")
+  requestedSizeSquareMetres    Decimal?  @map("requested_size_square_metres")
+  reason                       String?
+
+  // ── Wizard tracking ──
+  wizardStep  Int?     @map("wizard_step")
+  isDraft     Boolean  @default(true) @map("is_draft")
+
+  // ── Jurisdiction (steps 1-3) ──
+  provinceId    String? @map("province_id")
+  authorityId   String? @map("authority_id")
+  authorityType String? @map("authority_type")
+  villageId     String? @map("village_id")
+  villageName   String? @map("village_name")
+
+  // ── Applicant info (steps 4-6) ──
+  applicantFirstName  String? @map("applicant_first_name")
+  applicantLastName   String? @map("applicant_last_name")
+  applicantPhone      String? @map("applicant_phone")
+  applicantIdNumber   String? @map("applicant_id_number")
+
+  // ── Household (step 7) ──
+  householdSize Int @default(1) @map("household_size")
+
+  // ── Land request (steps 8-9) ──
+  landPurpose String? @map("land_purpose")
+  // values: residential | business | farming | community
+
+  // ── Existing tenure (step 10) ──
+  hasExistingLand         Boolean? @map("has_existing_land")
+  existingLandDescription String?  @map("existing_land_description")
+
+  // ── Previous applications (step 11) ──
+  hasPreviousApplication Boolean? @map("has_previous_application")
+  previousApplicationRef String?  @map("previous_application_ref")
+
+  // ── Disputes (step 12) ──
+  hasDispute         Boolean? @map("has_dispute")
+  disputeDescription String?  @map("dispute_description")
+
+  // ── GPS / site (step 14) ──
+  gpsLatitude     Decimal? @map("gps_latitude")  @db.Decimal(10, 7)
+  gpsLongitude    Decimal? @map("gps_longitude") @db.Decimal(10, 7)
+  siteDescription String?  @map("site_description")
+
+  // ── Consent (step 15) ──
+  consentTerms Boolean? @map("consent_terms")
+  consentPopia Boolean? @map("consent_popia")
+
+  // ── Status + review ──
+  status          String    @default("draft")
+  submittedAt     DateTime? @map("submitted_at")
+  reviewedAt      DateTime? @map("reviewed_at")
+  decidedAt       DateTime? @map("decided_at")
+  decisionNotes   String?   @map("decision_notes")
+  decidedByUserId String?   @map("decided_by_user_id")
+  allocatedStandId String?  @map("allocated_stand_id")
+  ptoId           String?   @map("pto_id")
+
+  // ── Duplicate detection ──
+  potentialDuplicateOf String? @map("potential_duplicate_of")
+
+  applicant      Resident         @relation(fields: [applicantResidentId], references: [id])
+  allocatedStand Stand?           @relation(fields: [allocatedStandId], references: [id])
+  pto            PTO?             @relation(fields: [ptoId], references: [id])
+  duplicateOf    LandApplication? @relation("DuplicateApplications", fields: [potentialDuplicateOf], references: [id])
+  duplicates     LandApplication[] @relation("DuplicateApplications")
+  documents      ApplicationDocument[]
+
+  @@index([applicantResidentId], map: "land_applications_applicant_idx")
+  @@index([status],              map: "land_applications_status_idx")
+  @@index([createdAt],           map: "land_applications_created_at_idx")
+  @@index([authorityId],         map: "land_applications_authority_idx")
+  @@map("land_applications")
+}
+
+model ApplicationDocument {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now()) @map("created_at")
+  applicationId String   @map("application_id")
+  s3Key         String   @map("s3_key")
+  documentType  String   @map("document_type")
+  // values: id_document | proof_of_residence | affidavit | photo | other
+
+  application LandApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@index([applicationId], map: "application_documents_application_idx")
+  @@map("application_documents")
+}
+
+// ── Permission to Occupy (PTO) (WP-03) ───────────────────────────────────────
+// Immutable once created; only superseded_at / superseded_by_pto_id can change.
+
+model PTO {
+  id                String    @id @default(uuid())
+  createdAt         DateTime  @default(now()) @map("created_at")
+  supersededAt      DateTime? @map("superseded_at")
+  supersededByPtoId String?   @map("superseded_by_pto_id")
+  applicationId     String    @map("application_id")
+  residentId        String    @map("resident_id")
+  standId           String    @map("stand_id")
+  issuedByUserId    String    @map("issued_by_user_id")
+  signedPayloadJson Json      @map("signed_payload_json")
+  signatureBase64   String    @map("signature_base64")
+  pdfDocumentId     String?   @map("pdf_document_id")
+
+  resident       Resident        @relation(fields: [residentId], references: [id])
+  stand          Stand           @relation(fields: [standId], references: [id])
+  applications   LandApplication[]
+  pdfDocument    Document?       @relation(fields: [pdfDocumentId], references: [id])
+  supersededBy   PTO?            @relation("PTOSupersession", fields: [supersededByPtoId], references: [id])
+  supersedes     PTO[]           @relation("PTOSupersession")
+  resaleListings ResaleListing[] @relation("ListingPTO")
+
+  @@index([residentId], map: "ptos_resident_id_idx")
+  @@index([standId], map: "ptos_stand_id_idx")
+  @@map("ptos")
+}
+
+// ── Resale Listings (WP-04) ───────────────────────────────────────────────────
+// listing_type: vacant_stand | built_property
+// status: draft | pending_council_approval | live | under_offer |
+//         transfer_pending | payment_received | transferred | withdrawn | expired
+
+model ResaleListing {
+  id                    String    @id @default(uuid())
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  sellerResidentId      String    @map("seller_resident_id")
+  standId               String    @map("stand_id")
+  ptoId                 String    @map("pto_id")
+  listingType           String    @map("listing_type")
+  askingPriceZar        Int       @map("asking_price_zar")
+  description           String
+  negotiable            Boolean   @default(false)
+  status                String    @default("draft")
+  expiresAt             DateTime  @map("expires_at")
+  photos                String[]
+  commissionBasisPoints Int       @default(250) @map("commission_basis_points")
+  paymentLinkUrl        String?   @map("payment_link_url")
+  escrowPaymentId       String?   @map("escrow_payment_id")
+  paymentReceivedAt     DateTime? @map("payment_received_at")
+
+  seller Resident       @relation(fields: [sellerResidentId], references: [id])
+  stand  Stand          @relation(fields: [standId], references: [id])
+  pto    PTO            @relation("ListingPTO", fields: [ptoId], references: [id])
+  offers ResaleOffer[]
+
+  @@index([status], map: "resale_listings_status_idx")
+  @@index([standId], map: "resale_listings_stand_id_idx")
+  @@index([sellerResidentId], map: "resale_listings_seller_idx")
+  @@index([expiresAt], map: "resale_listings_expires_at_idx")
+  @@map("resale_listings")
+}
+
+model ResaleOffer {
+  id              String    @id @default(uuid())
+  createdAt       DateTime  @default(now()) @map("created_at")
+  listingId       String    @map("listing_id")
+  buyerResidentId String    @map("buyer_resident_id")
+  offerAmountZar  Int       @map("offer_amount_zar")
+  status          String    @default("submitted")
+  decidedAt       DateTime? @map("decided_at")
+  notes           String?
+
+  listing ResaleListing @relation(fields: [listingId], references: [id])
+  buyer   Resident      @relation(fields: [buyerResidentId], references: [id])
+
+  @@index([listingId], map: "resale_offers_listing_id_idx")
+  @@index([buyerResidentId], map: "resale_offers_buyer_idx")
+  @@map("resale_offers")
+}

@@ -1,0 +1,316 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ── Platform-owned entities (live in the `public` schema) ──────────────────
+// Tenant-scoped entities (Resident, Stand, etc.) are defined in
+// prisma/schema.tenant.prisma, added in WP-02 (T-02.01).
+
+enum Role {
+  resident
+  foot_soldier
+  council_secretary
+  council_member
+  land_officer
+  provider
+  supplier
+  founder
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  mfaEnabled   Boolean  @default(false) @map("mfa_enabled")
+  // TOTP secret stored encrypted at rest; populated in T-01.07
+  mfaSecret    String?  @map("mfa_secret")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  memberships         TenantMembership[]
+  refreshTokens       RefreshToken[]
+  mfaRecoveryCodes    MfaRecoveryCode[]
+  passwordResetTokens PasswordResetToken[]
+
+  @@map("users")
+}
+
+// A user has exactly one role per tenant they belong to.
+model TenantMembership {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  tenantSlug String   @map("tenant_slug")
+  role       Role
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantSlug])
+  @@map("tenant_memberships")
+}
+
+// Single-use password reset tokens — 1-hour expiry, SHA-256 hash stored only.
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  tenantSlug String    @map("tenant_slug")
+  expiresAt  DateTime  @map("expires_at")
+  usedAt     DateTime? @map("used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "password_reset_tokens_user_id_idx")
+  @@map("password_reset_tokens")
+}
+
+// Single-use recovery codes — generated at MFA setup, displayed once, stored hashed.
+model MfaRecoveryCode {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  codeHash  String    @map("code_hash")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "mfa_recovery_codes_user_id_idx")
+  @@map("mfa_recovery_codes")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  // Raw token is never stored — only the SHA-256 hash.
+  tokenHash String    @unique @map("token_hash")
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}
+
+// ── Jurisdiction master data ──────────────────────────────────────────────
+// Platform-owned — not per-tenant. Provinces, land authorities (Traditional
+// Councils, Municipalities, CPAs, Private Developments), and their villages.
+
+model Province {
+  id   String @id            // ISO code: GP | KZN | LP | MP | NW | FS | NC | EC | WC
+  name String
+  code String                 // Same as id; surfaced separately for readability
+
+  authorities LandAuthority[]
+
+  @@map("provinces")
+}
+
+model LandAuthority {
+  id            String  @id @default(uuid())
+  name          String
+  authorityType String  @map("authority_type")
+  // values: traditional_council | municipality | cpa | private_development
+  provinceId    String  @map("province_id")
+  isActive      Boolean @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  province Province          @relation(fields: [provinceId], references: [id])
+  villages AuthorityVillage[]
+
+  @@index([provinceId],    map: "land_authorities_province_idx")
+  @@index([authorityType], map: "land_authorities_type_idx")
+  @@map("land_authorities")
+}
+
+model AuthorityVillage {
+  id              String  @id @default(uuid())
+  landAuthorityId String  @map("land_authority_id")
+  name            String
+  isActive        Boolean @default(true) @map("is_active")
+
+  authority LandAuthority @relation(fields: [landAuthorityId], references: [id])
+
+  @@index([landAuthorityId], map: "authority_villages_authority_idx")
+  @@map("authority_villages")
+}
+
+// ── Platform audit log (WP-05) ───────────────────────────────────────────
+// Platform-level events that are not tenant-scoped (services, suppliers, etc.)
+
+model PlatformAuditEvent {
+  id          String   @id @default(uuid())
+  createdAt   DateTime @default(now()) @map("created_at")
+  actorUserId String?  @map("actor_user_id")
+  actorRole   String?  @map("actor_role")
+  eventType   String   @map("event_type")
+  entityType  String?  @map("entity_type")
+  entityId    String?  @map("entity_id")
+  tenantSlug  String?  @map("tenant_slug")
+  payloadJson Json?    @map("payload_json")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+
+  @@index([eventType], map: "platform_audit_event_type_idx")
+  @@index([entityId], map: "platform_audit_entity_id_idx")
+  @@map("platform_audit_events")
+}
+
+// ── Marketplace — Service Providers (WP-05) ───────────────────────────────
+// verification_status: unverified | documents_submitted | verified | suspended
+// categories: gardening | plumbing | electrical | building | fencing |
+//             bricklaying | borehole | architecture | cleaning | security
+
+model ServiceProvider {
+  id                   String   @id @default(uuid())
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+  businessName         String   @map("business_name")
+  cipcNumber           String?  @map("cipc_number")
+  vatNumber            String?  @map("vat_number")
+  primaryContactUserId String   @map("primary_contact_user_id")
+  categories           String[] @default([])
+  geographicCoverage   String[] @default([]) @map("geographic_coverage")
+  verificationStatus   String   @default("unverified") @map("verification_status")
+  bankDetailsEncrypted Json?    @map("bank_details_encrypted")
+  createdByUserId      String   @map("created_by_user_id")
+
+  bookings ServiceBooking[]
+
+  @@index([verificationStatus], map: "service_providers_status_idx")
+  @@index([primaryContactUserId], map: "service_providers_user_idx")
+  @@map("service_providers")
+}
+
+// ── Marketplace — Suppliers (WP-05) ──────────────────────────────────────
+// category: hardware_chain | regional_chain | local_store
+// integration_mechanism: api | whatsapp_template | email_template | manual
+// commission_settlement_cadence: per_transaction | weekly | monthly
+
+model Supplier {
+  id                         String   @id @default(uuid())
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+  businessName               String   @map("business_name")
+  cipcNumber                 String?  @map("cipc_number")
+  vatNumber                  String?  @map("vat_number")
+  primaryContactUserId       String?  @map("primary_contact_user_id")
+  category                   String   @map("category")
+  geographicCoverage         String[] @default([]) @map("geographic_coverage")
+  integrationMechanism       String   @map("integration_mechanism")
+  integrationConfig          Json     @default("{}") @map("integration_config")
+  commissionRateBasisPoints  Int      @default(250) @map("commission_rate_basis_points")
+  commissionSettlementCadence String  @default("per_transaction") @map("commission_settlement_cadence")
+  verificationStatus         String   @default("unverified") @map("verification_status")
+
+  quoteRequests  SupplierQuoteRequest[]  @relation("DispatchedSuppliers")
+  quoteResponses SupplierQuoteResponse[]
+  sales          SupplierSale[]
+
+  @@index([category], map: "suppliers_category_idx")
+  @@map("suppliers")
+}
+
+// ── Marketplace — Service Bookings (WP-05) ───────────────────────────────
+// status: quote_requested | quoted | accepted | in_progress |
+//         completed | disputed | cancelled
+
+model ServiceBooking {
+  id                  String    @id @default(uuid())
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  tenantSlug          String    @map("tenant_slug")
+  customerResidentId  String    @map("customer_resident_id")
+  providerId          String    @map("provider_id")
+  category            String
+  description         String
+  requestedDate       DateTime? @map("requested_date")
+  quoteAmountZar      Int?      @map("quote_amount_zar")
+  takeRateBasisPoints Int?      @map("take_rate_basis_points")
+  status              String    @default("quote_requested")
+  escrowPaymentId     String?   @map("escrow_payment_id")
+  customerRating      Int?      @map("customer_rating")
+  providerRating      Int?      @map("provider_rating")
+  customerConfirmedAt DateTime? @map("customer_confirmed_at")
+  providerConfirmedAt DateTime? @map("provider_confirmed_at")
+  disputedAt          DateTime? @map("disputed_at")
+  disputeReason       String?   @map("dispute_reason")
+
+  provider ServiceProvider @relation(fields: [providerId], references: [id])
+
+  @@index([status], map: "service_bookings_status_idx")
+  @@index([providerId], map: "service_bookings_provider_idx")
+  @@index([tenantSlug, customerResidentId], map: "service_bookings_customer_idx")
+  @@map("service_bookings")
+}
+
+// ── Marketplace — Supplier Quote Requests (WP-05) ────────────────────────
+// status: pending | dispatched | responses_received | customer_decided | expired
+
+model SupplierQuoteRequest {
+  id                       String   @id @default(uuid())
+  createdAt                DateTime @default(now()) @map("created_at")
+  tenantSlug               String   @map("tenant_slug")
+  requestedByUserId        String   @map("requested_by_user_id")
+  basketJson               Json     @map("basket_json")
+  dispatchedToSupplierIds  String[] @default([]) @map("dispatched_to_supplier_ids")
+  status                   String   @default("pending")
+
+  responses          SupplierQuoteResponse[]
+  dispatchedSuppliers Supplier[] @relation("DispatchedSuppliers")
+
+  @@index([tenantSlug], map: "supplier_quote_requests_tenant_idx")
+  @@index([status], map: "supplier_quote_requests_status_idx")
+  @@map("supplier_quote_requests")
+}
+
+// ── Marketplace — Supplier Quote Responses (WP-05) ───────────────────────
+// received_via: api | whatsapp_template | email_template | manual
+
+model SupplierQuoteResponse {
+  id                  String   @id @default(uuid())
+  createdAt           DateTime @default(now()) @map("created_at")
+  requestId           String   @map("request_id")
+  supplierId          String   @map("supplier_id")
+  receivedVia         String   @map("received_via")
+  quoteAmountZar      Int?     @map("quote_amount_zar")
+  availability        String?
+  leadTimeDays        Int?     @map("lead_time_days")
+  rawResponseText     String?  @map("raw_response_text")
+  parsedResponseJson  Json?    @map("parsed_response_json")
+
+  request  SupplierQuoteRequest @relation(fields: [requestId], references: [id])
+  supplier Supplier             @relation(fields: [supplierId], references: [id])
+
+  @@index([requestId], map: "supplier_quote_responses_request_idx")
+  @@map("supplier_quote_responses")
+}
+
+// ── Marketplace — Supplier Sales + Commission (WP-05) ────────────────────
+// status: pending_invoice | invoiced | paid
+
+model SupplierSale {
+  id                   String    @id @default(uuid())
+  createdAt            DateTime  @default(now()) @map("created_at")
+  supplierId           String    @map("supplier_id")
+  quoteRequestId       String?   @map("quote_request_id")
+  tenantSlug           String    @map("tenant_slug")
+  customerResidentId   String?   @map("customer_resident_id")
+  fulfilledAmountZar   Int       @map("fulfilled_amount_zar")
+  commissionAmountZar  Int       @map("commission_amount_zar")
+  status               String    @default("pending_invoice")
+  invoicedAt           DateTime? @map("invoiced_at")
+  paidAt               DateTime? @map("paid_at")
+  invoiceDocumentId    String?   @map("invoice_document_id")
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId, status], map: "supplier_sales_supplier_status_idx")
+  @@map("supplier_sales")
+}

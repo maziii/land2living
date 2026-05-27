@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Resale Offer Form — L2L</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 12pt; max-width: 210mm; margin: 20mm auto; color: #111; }
+    h1 { font-size: 16pt; text-align: center; margin-bottom: 4px; }
+    .subtitle { text-align: center; color: #555; margin-bottom: 24px; }
+    .ref-box { border: 2px solid #333; display: inline-block; padding: 8px 20px; float: right; font-size: 11pt; }
+    .section { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 12px; }
+    .section h2 { font-size: 12pt; color: #333; margin-bottom: 10px; }
+    .field { margin-bottom: 10px; }
+    .field label { font-weight: bold; font-size: 10pt; display: block; margin-bottom: 2px; }
+    .field .line { border-bottom: 1px solid #333; min-height: 22px; padding: 2px 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .sig-block { margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+    .sig-line { border-bottom: 1px solid #333; height: 24px; margin-top: 40px; }
+    .sig-label { font-size: 9pt; color: #555; margin-top: 4px; }
+    .notice { background: #f5f5f5; border: 1px solid #ccc; padding: 10px; font-size: 9pt; margin-top: 20px; }
+    @media print { body { margin: 10mm; } }
+  </style>
+</head>
+<body>
+
+<div style="overflow:hidden; margin-bottom: 16px;">
+  <h1>Land2Living — Resale Offer Form</h1>
+  <p class="subtitle">Buyer's offer to purchase a listed stand or property</p>
+  <div class="ref-box">
+    Paper Ref: OFR-____-____-___<br/>
+    Date: ________________________
+  </div>
+</div>
+
+<div class="section">
+  <h2>1. Listing Reference</h2>
+  <div class="two-col">
+    <div class="field"><label>Listing paper ref / L2L listing ID</label><div class="line"></div></div>
+    <div class="field"><label>Stand / property description</label><div class="line"></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>2. Buyer Information</h2>
+  <div class="two-col">
+    <div class="field"><label>Buyer full name</label><div class="line"></div></div>
+    <div class="field"><label>ID / Passport number</label><div class="line"></div></div>
+    <div class="field"><label>Resident ID (if registered)</label><div class="line"></div></div>
+    <div class="field"><label>Phone number</label><div class="line"></div></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>3. Offer Details</h2>
+  <div class="two-col">
+    <div class="field"><label>Offer amount (ZAR)</label><div class="line"></div></div>
+    <div class="field"><label>Offer valid until (date)</label><div class="line"></div></div>
+  </div>
+  <div class="field"><label>Notes / conditions (if any)</label>
+    <div class="line"></div><div class="line" style="margin-top:4px;"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>4. Buyer Declaration</h2>
+  <p style="font-size:10pt;">I, the undersigned, confirm that this offer is genuine and that I have the means to complete this purchase. I understand that the council must approve the transfer and that a commission of up to 2.5% may be added to the purchase price for the platform fee.</p>
+</div>
+
+<div class="sig-block">
+  <div>
+    <div class="sig-line"></div>
+    <div class="sig-label">Buyer signature &amp; date</div>
+  </div>
+  <div>
+    <div class="sig-line"></div>
+    <div class="sig-label">Council witness signature &amp; date</div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>5. Seller Response</h2>
+  <p style="font-size:10pt; margin-bottom: 16px;">Seller to complete one of the following:</p>
+  <div style="margin: 10px 0;">☐ &nbsp;<strong>Accepted</strong> — I accept this offer as presented</div>
+  <div style="margin: 10px 0;">☐ &nbsp;<strong>Rejected</strong> — Reason: <span style="display:inline-block; border-bottom: 1px solid #333; width: 200px;"></span></div>
+  <div style="margin: 10px 0;">☐ &nbsp;<strong>Counter-offer</strong> — New amount: R <span style="display:inline-block; border-bottom: 1px solid #333; width: 100px;"></span></div>
+
+  <div class="sig-block" style="margin-top: 24px;">
+    <div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Seller signature &amp; date</div>
+    </div>
+    <div>
+      <div class="sig-line"></div>
+      <div class="sig-label">Council witness signature &amp; date</div>
+    </div>
+  </div>
+</div>
+
+<div class="notice">
+  <strong>Office use:</strong> Back-entered: <span style="display:inline-block; width:80px; border-bottom:1px solid #555;"></span> &nbsp; System offer ID: <span style="display:inline-block; width:140px; border-bottom:1px solid #555;"></span>
+</div>
+
+</body>
+</html>
