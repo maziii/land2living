@@ -31,5 +31,7 @@ export const listStandQuerySchema = z.object({
     .string()
     .regex(/^-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?$/, "bbox must be minLat,minLng,maxLat,maxLng")
     .optional(),
+  // When true, exclude stands that are offered, accepted, or actively occupied
+  availableOnly: z.coerce.boolean().optional().default(false),
 });
 export type ListStandQuery = z.infer<typeof listStandQuerySchema>;

@@ -29,6 +29,12 @@ export interface ListingResponse {
   paymentLinkUrl: string | null;
   escrowPaymentId: string | null;
   paymentReceivedAt: string | null;
+  // Stand details joined at query time
+  standAddress: string;
+  standVillage: string;
+  standAreaSqm: number | null;
+  standType: string | null;
+  standReference: string | null;
 }
 
 export interface ListingDetailResponse extends ListingResponse {

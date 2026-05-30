@@ -1,12 +1,14 @@
 import type { Prisma } from "../../../generated/tenant-client/index.js";
 import { recordAuditEvent } from "../../../shared/audit/service.js";
 import { signDocument, verifySignature, getTenantPublicKey } from "../../../shared/documents/signing.js";
+import { uploadToS3, downloadFromS3 } from "../../../shared/documents/s3.js";
 import { getPrismaClient } from "../../../shared/database/index.js";
 import type { TenantContext } from "../../../shared/database/tenant-context.js";
 import * as repo from "./repository.js";
-import type { PTO } from "./repository.js";
+import type { PTO, PTOWithDetails } from "./repository.js";
 import { generatePTOPDF } from "./pdf.js";
-import type { PTOResponse, PTOVerifyResult } from "./types.js";
+import type { PTOResponse, PTOListResponse, PTOVerifyResult, PTOHistoryEntry } from "./types.js";
+import type { ListPTOsQuery } from "./schemas.js";
 
 const PTO_VERIFY_BASE = process.env["PUBLIC_BASE_URL"] ?? "https://l2l.app";
 
@@ -17,7 +19,16 @@ export class PTOError extends Error {
   }
 }
 
-function toResponse(pto: PTO): PTOResponse {
+function toResponse(pto: PTO | PTOWithDetails): PTOResponse {
+  const withDetails = pto as PTOWithDetails;
+  const payload = pto.signedPayloadJson as Record<string, unknown>;
+  const residentName = withDetails.resident
+    ? `${withDetails.resident.firstName} ${withDetails.resident.lastName}`
+    : String(payload["residentName"] ?? "");
+  const standAddress = withDetails.stand?.addressDescription ?? String(payload["standAddress"] ?? "");
+  const standRef     = withDetails.stand?.localReference     ?? String(payload["standLocalRef"] ?? null);
+  const standVillage = withDetails.stand?.villageOrSection    ?? "";
+
   return {
     id: pto.id,
     createdAt: pto.createdAt.toISOString(),
@@ -25,12 +36,17 @@ function toResponse(pto: PTO): PTOResponse {
     supersededByPtoId: pto.supersededByPtoId,
     applicationId: pto.applicationId,
     residentId: pto.residentId,
+    residentName,
     standId: pto.standId,
+    standAddress,
+    standRef,
+    standVillage,
     issuedByUserId: pto.issuedByUserId,
     signedPayloadJson: pto.signedPayloadJson as Record<string, unknown>,
     signatureBase64: pto.signatureBase64,
     pdfDocumentId: pto.pdfDocumentId,
     verificationUrl: `${PTO_VERIFY_BASE}/verify/${pto.id}`,
+    status: pto.supersededAt ? "superseded" : "active",
   };
 }
 
@@ -43,8 +59,8 @@ export async function issuePTO(
 
   const application = await prisma.landApplication.findUnique({ where: { id: applicationId } });
   if (!application) throw new PTOError("Application not found", 404);
-  if (application.status !== "approved") {
-    throw new PTOError(`Application must be in 'approved' status to issue a PTO (current: ${application.status})`, 409);
+  if (application.status !== "offer_accepted") {
+    throw new PTOError(`Application must be in 'offer_accepted' status to issue a PTO (current: ${application.status})`, 409);
   }
   if (!application.allocatedStandId) {
     throw new PTOError("Application does not have an allocated stand", 400);
@@ -128,13 +144,95 @@ export async function issuePTO(
     ...(actor.userAgent !== undefined && { userAgent: actor.userAgent }),
   });
 
+  // Generate and store the signed PDF. Best-effort — failure does not roll back the PTO.
+  try {
+    const pdfBuffer = await generatePTOPDF({
+      ptoId: pto.id,
+      councilName: ctx.slug,
+      residentName: `${resident.firstName} ${resident.lastName}`,
+      residentId: resident.id,
+      standAddress: stand.addressDescription,
+      standRef: stand.localReference ?? pto.id,
+      allocationDate: allocationDate,
+      verificationUrl: `${PTO_VERIFY_BASE}/verify/${pto.id}`,
+    });
+    const s3Key = `ptos/${ctx.slug}/${pto.id}.pdf`;
+    await uploadToS3(s3Key, pdfBuffer, "application/pdf");
+    await prisma.pTO.update({ where: { id: pto.id }, data: { pdfDocumentId: s3Key } });
+    pto.pdfDocumentId = s3Key;
+  } catch (pdfErr) {
+    // Log but don't fail — PDF can still be generated on demand via GET /ptos/:id/pdf
+    console.error("[issuePTO] PDF generation/storage failed:", pdfErr instanceof Error ? pdfErr.message : pdfErr);
+  }
+
   return toResponse(pto);
 }
 
 export async function getPTO(ctx: TenantContext, id: string): Promise<PTOResponse | null> {
-  const pto = await repo.findPTO(ctx, id);
+  const pto = await repo.findPTOWithDetails(ctx, id);
   if (!pto) return null;
   return toResponse(pto);
+}
+
+export async function listPTOs(ctx: TenantContext, query: ListPTOsQuery): Promise<PTOListResponse> {
+  const { ptos, total } = await repo.listPTOs(ctx, query);
+  return {
+    ptos: ptos.map(p => toResponse(p)),
+    total,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
+}
+
+export async function getPTOHistory(ctx: TenantContext, id: string): Promise<PTOHistoryEntry[]> {
+  const chain = await repo.findPTOChain(ctx, id);
+  return chain.map((pto, i) => ({
+    ...toResponse(pto),
+    transferType: i === chain.length - 1
+      ? "initial" as const
+      : pto.supersededAt && !pto.supersededByPtoId
+        ? "revocation" as const
+        : "transfer" as const,
+  }));
+}
+
+export async function revokePTO(
+  ctx: TenantContext,
+  id: string,
+  reason: string,
+  actor: { userId: string; role: string; ip?: string; userAgent?: string },
+): Promise<PTOResponse> {
+  const pto = await repo.findPTOWithDetails(ctx, id);
+  if (!pto) throw new PTOError("PTO not found", 404);
+  if (pto.supersededAt) throw new PTOError("PTO is already superseded or revoked", 409);
+
+  const prisma = getPrismaClient(ctx);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.pTO.update({
+      where: { id },
+      data: { supersededAt: new Date() },
+    });
+
+    await tx.standOccupancy.updateMany({
+      where: { standId: pto.standId, residentId: pto.residentId, endedAt: null },
+      data: { endedAt: new Date() },
+    });
+  });
+
+  await recordAuditEvent(ctx, {
+    actorUserId: actor.userId,
+    actorRole: actor.role,
+    eventType: "pto.revoked",
+    entityType: "pto",
+    entityId: id,
+    payloadJson: { reason, residentId: pto.residentId, standId: pto.standId },
+    ...(actor.ip !== undefined && { ipAddress: actor.ip }),
+    ...(actor.userAgent !== undefined && { userAgent: actor.userAgent }),
+  });
+
+  const updated = await repo.findPTOWithDetails(ctx, id);
+  return toResponse(updated!);
 }
 
 export function verifyPTO(
@@ -169,6 +267,15 @@ export function getTenantPublicKeyForTenant(tenantSlug: string): string {
 export async function getPTOPDF(ctx: TenantContext, id: string): Promise<Buffer | null> {
   const pto = await repo.findPTO(ctx, id);
   if (!pto) return null;
+
+  // Serve the stored PDF when available (avoids Puppeteer on every request).
+  if (pto.pdfDocumentId) {
+    try {
+      return await downloadFromS3(pto.pdfDocumentId);
+    } catch {
+      // Fall through to on-demand generation if S3 fetch fails.
+    }
+  }
 
   const payload = pto.signedPayloadJson as Record<string, unknown>;
   return generatePTOPDF({

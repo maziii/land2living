@@ -31,6 +31,8 @@ import { ApplicationsPage } from "./pages/applications/ApplicationsPage.js";
 import { ApplicationDetailPage } from "./pages/applications/ApplicationDetailPage.js";
 import { LandDashboardPage } from "./pages/land/LandDashboardPage.js";
 import { AllocatedLandPage } from "./pages/land/AllocatedLandPage.js";
+import { PTOsPage } from "./pages/land/PTOsPage.js";
+import { PTODetailPage } from "./pages/land/PTODetailPage.js";
 import { ConfigurationsPage } from "./pages/land/ConfigurationsPage.js";
 import { ResalesPage } from "./pages/resales/ResalesPage.js";
 import { ResaleDetailPage } from "./pages/resales/ResaleDetailPage.js";
@@ -87,6 +89,10 @@ createRoot(rootEl).render(
 
               {/* Allocated */}
               <Route path="allocated" element={<RoleGate roles={COUNCIL_STAFF}><AllocatedLandPage /></RoleGate>} />
+
+              {/* PTO Register */}
+              <Route path="ptos" element={<RoleGate roles={LAND_TEAM}><PTOsPage /></RoleGate>} />
+              <Route path="ptos/:id" element={<RoleGate roles={LAND_TEAM}><PTODetailPage /></RoleGate>} />
 
               {/* Configurations */}
               <Route path="configurations" element={<RoleGate roles={SENIOR_STAFF}><ConfigurationsPage /></RoleGate>} />

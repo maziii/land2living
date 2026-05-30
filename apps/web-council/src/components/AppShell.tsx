@@ -13,6 +13,7 @@ const LAND_ITEMS: NavItem[] = [
   { to: "/dashboard/land/available",      label: "Available Land",     roles: ["founder", "council_secretary", "council_member", "land_officer", "foot_soldier"] },
   { to: "/dashboard/land/applications",   label: "Land Applications",  roles: ["founder", "council_secretary", "council_member", "land_officer"] },
   { to: "/dashboard/land/allocated",      label: "Allocated Land",     roles: ["founder", "council_secretary", "council_member"] },
+  { to: "/dashboard/land/ptos",           label: "PTO Register",       roles: ["founder", "council_secretary", "council_member", "land_officer"] },
   { to: "/dashboard/land/configurations", label: "Configurations",     roles: ["founder", "council_secretary"] },
 ];
 

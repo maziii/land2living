@@ -21,6 +21,11 @@ const mockListing: ListingResponse = {
   paymentLinkUrl: null,
   escrowPaymentId: null,
   paymentReceivedAt: null,
+  standAddress: "Stand A-001",
+  standVillage: "Hammanskraal",
+  standAreaSqm: 300,
+  standType: "residential",
+  standReference: "A-001",
 };
 
 const mockOffer: OfferResponse = {

@@ -30,6 +30,17 @@ export async function uploadToS3(
   );
 }
 
+export async function downloadFromS3(key: string): Promise<Buffer> {
+  const client = buildClient();
+  const { Body } = await client.send(new GetObjectCommand({ Bucket: bucket(), Key: key }));
+  if (!Body) throw new Error(`Empty body for S3 key: ${key}`);
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of Body as AsyncIterable<Uint8Array>) {
+    chunks.push(chunk);
+  }
+  return Buffer.concat(chunks);
+}
+
 // Returns a pre-signed GET URL that expires in 5 minutes by default.
 // In production the bucket is private; this URL is the only way to download.
 export async function getPresignedUrl(key: string, expiresInSeconds = 300): Promise<string> {

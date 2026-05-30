@@ -49,6 +49,8 @@ export type BookingStatus =
 export interface Provider {
   id: string;
   businessName: string;
+  cipcNumber: string | null;
+  vatNumber: string | null;
   categories: ServiceCategory[];
   geographicCoverage: string[];
   verificationStatus: "unverified" | "documents_submitted" | "verified" | "suspended";
@@ -76,10 +78,13 @@ export interface BookingListResponse {
   total: number;
 }
 
-export async function fetchProviders(category?: ServiceCategory): Promise<{ providers: Provider[]; total: number }> {
-  const qs = new URLSearchParams({ pageSize: "50", verificationStatus: "verified" });
-  if (category) qs.set("category", category);
+export async function fetchProviders(): Promise<{ providers: Provider[]; total: number }> {
+  const qs = new URLSearchParams({ pageSize: "100", verificationStatus: "verified" });
   return apiFetch<{ providers: Provider[]; total: number }>(`/providers?${qs.toString()}`);
+}
+
+export async function fetchProvider(id: string): Promise<Provider> {
+  return apiFetch<Provider>(`/providers/${id}`);
 }
 
 export async function createBooking(data: {

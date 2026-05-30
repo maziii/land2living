@@ -64,12 +64,17 @@ export async function findStandWithOccupants(
   });
 }
 
+// Application statuses that mean a stand is no longer freely available.
+// offer_rejected is intentionally excluded — a rejected offer frees the stand again.
+const STAND_LOCKED_STATUSES = ["stand_offered", "viewing_requested", "offer_accepted", "active"] as const;
+
 export interface ListStandsFilter {
   page: number;
   pageSize: number;
   villageOrSection?: string;
   search?: string;
   bbox?: { minLat: number; minLng: number; maxLat: number; maxLng: number };
+  availableOnly?: boolean;
 }
 
 export async function listStands(
@@ -77,6 +82,12 @@ export async function listStands(
   filters: ListStandsFilter,
 ): Promise<{ stands: Stand[]; total: number }> {
   const where: Prisma.StandWhereInput = { deletedAt: null };
+
+  if (filters.availableOnly) {
+    // Exclude stands with an active application (offered/accepted/active) or an active occupancy.
+    where.applications = { none: { status: { in: [...STAND_LOCKED_STATUSES] } } };
+    where.occupancies  = { none: { endedAt: null } };
+  }
 
   if (filters.villageOrSection) {
     where.villageOrSection = { equals: filters.villageOrSection, mode: "insensitive" };

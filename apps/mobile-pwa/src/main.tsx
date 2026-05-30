@@ -22,6 +22,7 @@ import OverviewPage from "./pages/resident/OverviewPage.js";
 import MyLandPage from "./pages/resident/MyLandPage.js";
 import MarketplacePage from "./pages/resident/MarketplacePage.js";
 import ServicesPage from "./pages/resident/ServicesPage.js";
+import ProviderProfilePage from "./pages/resident/ProviderProfilePage.js";
 import LandApplicationWizard from "./pages/resident/LandApplicationWizard.js";
 import ApplicationDetailPage from "./pages/resident/ApplicationDetailPage.js";
 
@@ -54,6 +55,7 @@ createRoot(rootEl).render(
               <Route path="application/:id"   element={<ApplicationDetailPage />} />
               <Route path="market"     element={<MarketplacePage />} />
               <Route path="services"   element={<ServicesPage />} />
+              <Route path="provider/:id" element={<ProviderProfilePage />} />
             </Route>
 
             {/* Resale detail accessible from the resident portal */}

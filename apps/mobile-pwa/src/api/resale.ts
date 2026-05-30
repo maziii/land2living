@@ -25,6 +25,11 @@ export interface ListingSummary {
   status: ListingStatus;
   expiresAt: string;
   photos: string[];
+  standAddress: string;
+  standVillage: string;
+  standAreaSqm: number | null;
+  standType: string | null;
+  standReference: string | null;
 }
 
 export interface OfferSummary {
@@ -53,11 +58,13 @@ export async function fetchListings(params: {
   page?: number;
   pageSize?: number;
   status?: ListingStatus;
+  listingType?: ListingType;
 }): Promise<ListingListResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
   if (params.pageSize) qs.set("pageSize", String(params.pageSize));
   if (params.status) qs.set("status", params.status);
+  if (params.listingType) qs.set("listingType", params.listingType);
   return apiFetch<ListingListResponse>(`/resale-listings?${qs.toString()}`);
 }
 

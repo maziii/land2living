@@ -22,9 +22,21 @@ export async function findProvider(id: string): Promise<ServiceProvider | null> 
   return prisma.serviceProvider.findUnique({ where: { id } });
 }
 
+export async function findProviderByContactUserId(userId: string): Promise<ServiceProvider | null> {
+  return prisma.serviceProvider.findFirst({ where: { primaryContactUserId: userId } });
+}
+
 export async function updateProvider(
   id: string,
-  data: Partial<{ verificationStatus: string; bankDetailsEncrypted: object }>,
+  data: Partial<{
+    verificationStatus: string;
+    bankDetailsEncrypted: object;
+    businessName: string;
+    cipcNumber: string;
+    vatNumber: string;
+    categories: string[];
+    geographicCoverage: string[];
+  }>,
 ): Promise<ServiceProvider | null> {
   const existing = await prisma.serviceProvider.findUnique({ where: { id } });
   if (!existing) return null;

@@ -5,7 +5,7 @@ import type { TenantContext } from "../../shared/database/tenant-context.js";
 import { getPspAdapter } from "../../adapters/payment-psp/index.js";
 import { transferPTO } from "../register/ptos/service.js";
 import * as repo from "./repository.js";
-import type { ResaleListing, ResaleOffer } from "./repository.js";
+import type { ResaleListing, ResaleOffer, Stand } from "./repository.js";
 import type {
   CreateListingRequest,
   CreateOfferRequest,
@@ -25,7 +25,9 @@ export class ResaleError extends Error {
   }
 }
 
-function toListingResponse(l: ResaleListing): ListingResponse {
+function toListingResponse(l: ResaleListing & { stand?: Stand | null }): ListingResponse {
+  const stand = l.stand;
+  const rawKeys = stand ? (Array.isArray(stand.photoS3Keys) ? stand.photoS3Keys as string[] : []) : [];
   return {
     id: l.id,
     createdAt: l.createdAt.toISOString(),
@@ -39,11 +41,17 @@ function toListingResponse(l: ResaleListing): ListingResponse {
     negotiable: l.negotiable,
     status: l.status as ListingResponse["status"],
     expiresAt: l.expiresAt.toISOString(),
-    photos: l.photos,
+    photos: l.photos.length ? l.photos : rawKeys,
     commissionBasisPoints: l.commissionBasisPoints,
     paymentLinkUrl: l.paymentLinkUrl,
     escrowPaymentId: l.escrowPaymentId,
     paymentReceivedAt: l.paymentReceivedAt ? l.paymentReceivedAt.toISOString() : null,
+    standAddress: stand?.addressDescription ?? "",
+    standVillage: stand?.villageOrSection ?? "",
+    standAreaSqm: stand?.areaSquareMetres !== null && stand?.areaSquareMetres !== undefined
+      ? Number(stand.areaSquareMetres) : null,
+    standType: stand?.standType ?? null,
+    standReference: stand?.localReference ?? null,
   };
 }
 
@@ -174,6 +182,7 @@ export async function getListing(
   if (!listing) return null;
   return { ...toListingResponse(listing), offers: listing.offers.map(toOfferResponse) };
 }
+
 
 export async function listListings(
   ctx: TenantContext,

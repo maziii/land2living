@@ -10,12 +10,17 @@ const mockPTO: PTOResponse = {
   supersededByPtoId: null,
   applicationId: "a0000000-0000-0000-0000-000000000001",
   residentId: "b0000000-0000-0000-0000-000000000001",
+  residentName: "Test Resident",
   standId: "c0000000-0000-0000-0000-000000000001",
+  standAddress: "Stand A-001, Test Section",
+  standRef: "A-001",
+  standVillage: "Test Village",
   issuedByUserId: "user-1",
   signedPayloadJson: { ptoVersion: "1", allocationDate: "2026-01-01" },
   signatureBase64: "abc123==",
   pdfDocumentId: null,
   verificationUrl: "https://l2l.app/verify/pto-1",
+  status: "active",
 };
 
 vi.mock("../service.js", () => ({

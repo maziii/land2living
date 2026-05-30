@@ -36,6 +36,30 @@ export const listProvidersQuerySchema = z.object({
   verificationStatus: z.enum(PROVIDER_VERIFICATION_STATUSES).optional(),
 });
 
+export const updateProviderProfileSchema = z.object({
+  businessName:       z.string().min(2).max(200).optional(),
+  cipcNumber:         z.string().max(20).optional(),
+  vatNumber:          z.string().max(20).optional(),
+  categories:         z.array(z.enum(SERVICE_CATEGORIES)).min(1).optional(),
+  geographicCoverage: z.array(z.string().min(1)).min(1).optional(),
+});
+
+export const providerSelfRegisterSchema = z.object({
+  email:              z.string().email(),
+  password:           z.string().min(8),
+  tenantSlug:         z.string().regex(/^[a-z][a-z0-9_]*$/),
+  firstName:          z.string().min(1).max(100),
+  lastName:           z.string().min(1).max(100),
+  phoneNumber:        z.string().min(7).max(20),
+  businessName:       z.string().min(2).max(200),
+  categories:         z.array(z.enum(SERVICE_CATEGORIES)).min(1),
+  geographicCoverage: z.array(z.string().min(1)).min(1),
+  cipcNumber:         z.string().max(20).optional(),
+  vatNumber:          z.string().max(20).optional(),
+});
+
 export type RegisterProviderRequest = z.infer<typeof registerProviderSchema>;
 export type UpdateVerificationRequest = z.infer<typeof updateVerificationSchema>;
 export type ListProvidersQuery = z.infer<typeof listProvidersQuerySchema>;
+export type UpdateProviderProfileRequest = z.infer<typeof updateProviderProfileSchema>;
+export type ProviderSelfRegisterRequest = z.infer<typeof providerSelfRegisterSchema>;

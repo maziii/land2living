@@ -231,25 +231,49 @@ export function withdrawApplication(apiFetch: ApiFetch, id: string) {
   return apiPost(apiFetch, `/api/v1/applications/${id}/withdraw`);
 }
 
-export async function uploadStandPhoto(apiFetch: ApiFetch, appId: string, file: File): Promise<void> {
+export interface IssuePTOResult { id: string; }
+
+export async function issuePTO(apiFetch: ApiFetch, id: string): Promise<IssuePTOResult> {
+  const res = await apiFetch(`/api/v1/applications/${id}/issue-pto`, {
+    method: "POST",
+    headers: JSON_HEADERS,
+    body: "{}",
+  });
+  if (!res.ok) {
+    const data = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(data.detail ?? `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<IssuePTOResult>;
+}
+
+export type UploadDocumentType = "id_document" | "proof_of_residence" | "affidavit" | "photo" | "stand_photo" | "other";
+
+export async function uploadApplicationDocument(
+  apiFetch: ApiFetch,
+  appId: string,
+  file: File,
+  documentType: UploadDocumentType,
+): Promise<ApplicationDocument> {
   const form = new FormData();
   form.append("file", file);
-  form.append("type", "stand_photo");
-
   const uploadRes = await apiFetch("/api/v1/documents", { method: "POST", body: form });
   if (!uploadRes.ok) {
     const data = (await uploadRes.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(data.detail ?? `Photo upload failed: HTTP ${uploadRes.status}`);
+    throw new Error(data.detail ?? `Upload failed: HTTP ${uploadRes.status}`);
   }
-  const doc = (await uploadRes.json()) as { s3Key: string };
-
+  const { s3Key } = (await uploadRes.json()) as { s3Key: string };
   const linkRes = await apiFetch(`/api/v1/applications/${appId}/documents`, {
     method: "POST",
     headers: JSON_HEADERS,
-    body: JSON.stringify({ s3Key: doc.s3Key, documentType: "stand_photo" }),
+    body: JSON.stringify({ s3Key, documentType }),
   });
   if (!linkRes.ok) {
     const data = (await linkRes.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(data.detail ?? `Failed to link photo: HTTP ${linkRes.status}`);
+    throw new Error(data.detail ?? `Failed to link document: HTTP ${linkRes.status}`);
   }
+  return linkRes.json() as Promise<ApplicationDocument>;
+}
+
+export async function uploadStandPhoto(apiFetch: ApiFetch, appId: string, file: File): Promise<void> {
+  await uploadApplicationDocument(apiFetch, appId, file, "stand_photo");
 }

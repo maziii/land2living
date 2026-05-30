@@ -175,6 +175,7 @@ export function StandsPage() {
     setError(null);
     fetchStands(apiFetch, {
       page, pageSize: 20,
+      availableOnly: true,
       ...(search                && { search }),
       // API accepts single villageOrSection; send first selected value
       ...(villageFilters.length && { villageOrSection: villageFilters[0] }),

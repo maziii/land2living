@@ -42,7 +42,7 @@ export function LandDashboardPage() {
       fetchApplications(apiFetch, { statuses: [status as ApplicationSummary["status"]], pageSize: 1 });
 
     Promise.all([
-      fetchStands(apiFetch, { pageSize: 1 }),
+      fetchStands(apiFetch, { pageSize: 1, availableOnly: true }),
       canSee("active"),
       canSee("submitted"),
       canSee("under_review"),

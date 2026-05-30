@@ -102,6 +102,7 @@ const DEV_USERS: { email: string; role: string; displayName: string }[] = [
   { email: "soldier@ndebele.dev",   role: "foot_soldier",      displayName: "Foot Soldier"       },
   { email: "officer@ndebele.dev",   role: "land_officer",      displayName: "Land Officer"       },
   { email: "resident@ndebele.dev",  role: "resident",          displayName: "Resident"           },
+  { email: "provider@ndebele.dev",  role: "provider",          displayName: "Provider (Dev)"     },
 ];
 
 // ── 1. Public schema migrations ───────────────────────────────────────────────
@@ -163,6 +164,7 @@ try {
   const secretaryUserId   = userIds["council_secretary"]!;
   const footSoldierUserId = userIds["foot_soldier"]!;
   const residentUserId    = userIds["resident"]!;
+  const providerUserId    = userIds["provider"]!;
 
   // ── 3b. Jurisdiction master data (idempotent — ON CONFLICT DO NOTHING) ───────
 
@@ -277,10 +279,15 @@ try {
     { id: randomUUID(), firstName: "Bongani",  lastName: "Ndlovu",   gender: "M", phone: "+27713001005", idPrefix: "820930678908", lang: "nde", status: "council_verified",  capturedBy: secretaryUserId   },
     { id: randomUUID(), firstName: "Lindiwe",  lastName: "Sithole",  gender: "F", phone: "+27713001006", idPrefix: "880418012308", lang: "nde", status: "identity_verified", capturedBy: footSoldierUserId },
     { id: randomUUID(), firstName: "Johannes", lastName: "Mokoena",  gender: "M", phone: "+27713001007", idPrefix: "750601890108", lang: "nso", status: "unverified",        capturedBy: secretaryUserId   },
-    { id: randomUUID(), firstName: "Precious", lastName: "Molefe",   gender: "F", phone: "+27713001008", idPrefix: "931210345608", lang: "tn",  status: "council_verified",  capturedBy: footSoldierUserId },
+    { id: randomUUID(), firstName: "Precious",  lastName: "Molefe",   gender: "F", phone: "+27713001008", idPrefix: "931210345608", lang: "tn",  status: "council_verified",  capturedBy: footSoldierUserId },
+    { id: randomUUID(), firstName: "Sibusiso",  lastName: "Zulu",     gender: "M", phone: "+27713001009", idPrefix: "881005789108", lang: "nde", status: "council_verified",  capturedBy: footSoldierUserId },
+    { id: randomUUID(), firstName: "Ntombi",    lastName: "Khumalo",  gender: "F", phone: "+27713001010", idPrefix: "920315456208", lang: "nde", status: "council_verified",  capturedBy: footSoldierUserId },
+    { id: randomUUID(), firstName: "Jabu",      lastName: "Ntuli",    gender: "M", phone: "+27713001011", idPrefix: "760820567308", lang: "zu",  status: "council_verified",  capturedBy: secretaryUserId   },
+    { id: randomUUID(), firstName: "Moses",     lastName: "Chauke",   gender: "M", phone: "+27713001012", idPrefix: "840612890108", lang: "ts",  status: "council_verified",  capturedBy: secretaryUserId   },
+    { id: randomUUID(), firstName: "Florence",  lastName: "Radebe",   gender: "F", phone: "+27713001013", idPrefix: "910225234508", lang: "nde", status: "council_verified",  capturedBy: footSoldierUserId },
   ];
 
-  const [demoResident, thabo, nomsa, sipho, , bongani, lindiwe, , precious] = residents;
+  const [demoResident, thabo, nomsa, sipho, , bongani, lindiwe, , precious, sibusiso, ntombi, jabu, moses, florence] = residents;
 
   for (const r of residents) {
     await client.query(
@@ -298,26 +305,32 @@ try {
 
   console.log("→ Seeding stands…");
 
-  // Near Hammanskraal / Temba, North West — lat ≈ -25.37, lon ≈ 28.28
+  // Near Hammanskraal / Temba / KwaNdebele region
   const stands = [
-    { id: randomUUID(), ref: "A-001", lat: "-25.3701", lon: "28.2801", area: "450",  addr: "Stand A-001, Boomplaats Section, Hammanskraal", village: "Boomplaats" },
-    { id: randomUUID(), ref: "A-002", lat: "-25.3712", lon: "28.2815", area: "380",  addr: "Stand A-002, Boomplaats Section, Hammanskraal", village: "Boomplaats" },
-    { id: randomUUID(), ref: "A-003", lat: "-25.3683", lon: "28.2754", area: "520",  addr: "Stand A-003, Extension 6, Temba",               village: "Extension 6" },
-    { id: randomUUID(), ref: "B-001", lat: "-25.3748", lon: "28.2850", area: "410",  addr: "Stand B-001, Ikageng Section, Hammanskraal",    village: "Ikageng" },
-    { id: randomUUID(), ref: "B-002", lat: "-25.3741", lon: "28.2842", area: "290",  addr: "Stand B-002, Ikageng Section, Hammanskraal",    village: "Ikageng" },
-    { id: randomUUID(), ref: "C-001", lat: "-25.3802", lon: "28.2901", area: "600",  addr: "Stand C-001, New Extension, Temba",             village: "New Extension" },
+    { id: randomUUID(), ref: "A-001", type: "residential", lat: "-25.3701", lon: "28.2801", area: "450",  addr: "Stand A-001, Boomplaats Section, Hammanskraal",     village: "Boomplaats"    },
+    { id: randomUUID(), ref: "A-002", type: "residential", lat: "-25.3712", lon: "28.2815", area: "380",  addr: "Stand A-002, Boomplaats Section, Hammanskraal",     village: "Boomplaats"    },
+    { id: randomUUID(), ref: "A-003", type: "residential", lat: "-25.3683", lon: "28.2754", area: "520",  addr: "Stand A-003, Extension 6, Temba",                   village: "Extension 6"   },
+    { id: randomUUID(), ref: "B-001", type: "residential", lat: "-25.3748", lon: "28.2850", area: "410",  addr: "Stand B-001, Ikageng Section, Hammanskraal",        village: "Ikageng"       },
+    { id: randomUUID(), ref: "B-002", type: "residential", lat: "-25.3741", lon: "28.2842", area: "290",  addr: "Stand B-002, Ikageng Section, Hammanskraal",        village: "Ikageng"       },
+    { id: randomUUID(), ref: "C-001", type: "business",    lat: "-25.3802", lon: "28.2901", area: "600",  addr: "Stand C-001, New Extension, Temba",                 village: "New Extension" },
+    { id: randomUUID(), ref: "D-001", type: "residential", lat: "-25.4701", lon: "28.6501", area: "350",  addr: "Stand D-001, Mhlanga Section, KwaMhlanga",          village: "KwaMhlanga"    },
+    { id: randomUUID(), ref: "D-002", type: "residential", lat: "-25.4712", lon: "28.6515", area: "480",  addr: "Stand D-002, Mhlanga Section, KwaMhlanga",          village: "KwaMhlanga"    },
+    { id: randomUUID(), ref: "E-001", type: "business",    lat: "-25.1401", lon: "29.1201", area: "820",  addr: "Stand E-001, Siyabuswa Business Park, Siyabuswa",   village: "Siyabuswa"     },
+    { id: randomUUID(), ref: "E-002", type: "farming",     lat: "-25.5501", lon: "28.5201", area: "1500", addr: "Stand E-002, Doornkop Agricultural Area, Doornkop", village: "Doornkop"      },
+    { id: randomUUID(), ref: "F-001", type: "residential", lat: "-25.3201", lon: "29.0101", area: "325",  addr: "Stand F-001, Enkangala Section, Enkangala",         village: "Enkangala"     },
+    { id: randomUUID(), ref: "F-002", type: "community",   lat: "-25.5101", lon: "28.7901", area: "680",  addr: "Stand F-002, Tweefontein Extension, Tweefontein",   village: "Tweefontein"   },
   ];
 
-  const [standA001, standA002, standA003, standB001, standB002] = stands;
+  const [standA001, standA002, standA003, standB001, standB002, , standD001, standD002, standE001, standE002, standF001] = stands;
 
   for (const s of stands) {
     await client.query(
       `INSERT INTO "${SCHEMA}".stands
          (id, local_reference, gps_latitude, gps_longitude, area_square_metres,
-          address_description, village_or_section, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,NOW())
+          address_description, village_or_section, stand_type, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
        ON CONFLICT (id) DO NOTHING`,
-      [s.id, s.ref, s.lat, s.lon, s.area, s.addr, s.village],
+      [s.id, s.ref, s.lat, s.lon, s.area, s.addr, s.village, s.type],
     );
   }
   console.log(`  ✓ ${stands.length} stands`);
@@ -328,13 +341,18 @@ try {
 
   const today = new Date().toISOString().slice(0, 10);
   const appIds = {
-    demo:    randomUUID(),
-    nomsa:   randomUUID(),
-    thabo:   randomUUID(),
-    sipho:   randomUUID(),
-    zanele:  randomUUID(),
-    bongani: randomUUID(),
+    demo:     randomUUID(),
+    nomsa:    randomUUID(),
+    thabo:    randomUUID(),
+    sipho:    randomUUID(),
+    zanele:   randomUUID(),
+    bongani:  randomUUID(),
     precious: randomUUID(),
+    sibusiso: randomUUID(),
+    ntombi:   randomUUID(),
+    jabu:     randomUUID(),
+    moses:    randomUUID(),
+    florence: randomUUID(),
   };
 
   // Demo resident — under_review (so the portal shows an active application)
@@ -436,26 +454,111 @@ try {
     [appIds.precious, precious!.id, secretaryUserId, standB001!.id],
   );
 
-  console.log(`  ✓ 6 applications (1 submitted, 4 approved, 1 rejected)`);
+  // Sibusiso — regularisation approved, Stand D-001
+  await client.query(
+    `INSERT INTO "${SCHEMA}".land_applications
+       (id, applicant_resident_id, application_type, requested_location_description,
+        household_size, reason, status, reviewed_at, decided_at,
+        decision_notes, decided_by_user_id, allocated_stand_id, updated_at)
+     VALUES ($1,$2,'regularisation','Mhlanga Section — Stand D-001, KwaMhlanga',2,
+       'Long-standing occupant of Stand D-001. Applying to regularise before listing the stand for resale.',
+       'approved',NOW() - INTERVAL '40 days',NOW() - INTERVAL '35 days',
+       'Occupation confirmed by community headman. Regularisation approved.',
+       $3,$4,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [appIds.sibusiso, sibusiso!.id, secretaryUserId, standD001!.id],
+  );
+
+  // Ntombi — regularisation approved, Stand D-002
+  await client.query(
+    `INSERT INTO "${SCHEMA}".land_applications
+       (id, applicant_resident_id, application_type, requested_location_description,
+        household_size, reason, status, reviewed_at, decided_at,
+        decision_notes, decided_by_user_id, allocated_stand_id, updated_at)
+     VALUES ($1,$2,'regularisation','Mhlanga Section — Stand D-002, KwaMhlanga',1,
+       'Single occupant. Occupied Stand D-002 for 7 years. Need PTO to sell and relocate.',
+       'approved',NOW() - INTERVAL '35 days',NOW() - INTERVAL '30 days',
+       'Stand uncontested. Regularisation approved.',
+       $3,$4,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [appIds.ntombi, ntombi!.id, secretaryUserId, standD002!.id],
+  );
+
+  // Jabu — regularisation approved, Stand E-001 (business stand)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".land_applications
+       (id, applicant_resident_id, application_type, requested_location_description,
+        household_size, reason, status, reviewed_at, decided_at,
+        decision_notes, decided_by_user_id, allocated_stand_id, updated_at)
+     VALUES ($1,$2,'regularisation','Siyabuswa Business Park — Stand E-001',1,
+       'Occupied this business stand for 10 years running a small spaza shop. Applying to regularise and list for sale.',
+       'approved',NOW() - INTERVAL '50 days',NOW() - INTERVAL '45 days',
+       'Business occupation verified. Stand E-001 regularisation approved.',
+       $3,$4,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [appIds.jabu, jabu!.id, secretaryUserId, standE001!.id],
+  );
+
+  // Moses — regularisation approved, Stand E-002 (farming stand)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".land_applications
+       (id, applicant_resident_id, application_type, requested_location_description,
+        household_size, reason, status, reviewed_at, decided_at,
+        decision_notes, decided_by_user_id, allocated_stand_id, updated_at)
+     VALUES ($1,$2,'regularisation','Doornkop Agricultural Area — Stand E-002',4,
+       'Family has farmed Stand E-002 for over 15 years. Applying to regularise before transferring to younger family member.',
+       'approved',NOW() - INTERVAL '45 days',NOW() - INTERVAL '40 days',
+       'Agricultural occupation confirmed. Regularisation approved.',
+       $3,$4,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [appIds.moses, moses!.id, secretaryUserId, standE002!.id],
+  );
+
+  // Florence — regularisation approved, Stand F-001
+  await client.query(
+    `INSERT INTO "${SCHEMA}".land_applications
+       (id, applicant_resident_id, application_type, requested_location_description,
+        household_size, reason, status, reviewed_at, decided_at,
+        decision_notes, decided_by_user_id, allocated_stand_id, updated_at)
+     VALUES ($1,$2,'regularisation','Enkangala Section — Stand F-001',3,
+       'Occupied Stand F-001 for 6 years. Applying to regularise and sell to fund building a larger home elsewhere.',
+       'approved',NOW() - INTERVAL '28 days',NOW() - INTERVAL '22 days',
+       'Occupation verified. Regularisation approved.',
+       $3,$4,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [appIds.florence, florence!.id, secretaryUserId, standF001!.id],
+  );
+
+  console.log(`  ✓ 11 applications (1 submitted, 9 approved, 1 rejected)`);
 
   // ── 9. PTOs ───────────────────────────────────────────────────────────────
 
   console.log("→ Seeding PTOs…");
 
   const ptoIds = {
-    thabo:   randomUUID(),
-    sipho:   randomUUID(),
-    bongani: randomUUID(),
+    thabo:    randomUUID(),
+    sipho:    randomUUID(),
+    bongani:  randomUUID(),
     precious: randomUUID(),
+    sibusiso: randomUUID(),
+    ntombi:   randomUUID(),
+    jabu:     randomUUID(),
+    moses:    randomUUID(),
+    florence: randomUUID(),
   };
 
   type PtoSeed = { id: string; appId: string; residentId: string; standId: string; residentName: string; standAddr: string; standRef: string; allocDate: string };
 
   const ptoSeeds: PtoSeed[] = [
-    { id: ptoIds.thabo!,    appId: appIds.thabo!,    residentId: thabo!.id,    standId: standA001!.id, residentName: "Thabo Mahlangu",    standAddr: standA001!.addr, standRef: standA001!.ref, allocDate: new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10) },
-    { id: ptoIds.sipho!,    appId: appIds.sipho!,    residentId: sipho!.id,    standId: standA003!.id, residentName: "Sipho Nkosi",       standAddr: standA003!.addr, standRef: standA003!.ref, allocDate: new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10) },
-    { id: ptoIds.bongani!,  appId: appIds.bongani!,  residentId: bongani!.id,  standId: standB002!.id, residentName: "Bongani Ndlovu",    standAddr: standB002!.addr, standRef: standB002!.ref, allocDate: new Date(Date.now() - 55 * 86400000).toISOString().slice(0, 10) },
-    { id: ptoIds.precious!, appId: appIds.precious!, residentId: precious!.id, standId: standB001!.id, residentName: "Precious Molefe",   standAddr: standB001!.addr, standRef: standB001!.ref, allocDate: new Date(Date.now() - 25 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.thabo!,    appId: appIds.thabo!,    residentId: thabo!.id,    standId: standA001!.id, residentName: "Thabo Mahlangu",   standAddr: standA001!.addr, standRef: standA001!.ref, allocDate: new Date(Date.now() - 10 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.sipho!,    appId: appIds.sipho!,    residentId: sipho!.id,    standId: standA003!.id, residentName: "Sipho Nkosi",      standAddr: standA003!.addr, standRef: standA003!.ref, allocDate: new Date(Date.now() - 15 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.bongani!,  appId: appIds.bongani!,  residentId: bongani!.id,  standId: standB002!.id, residentName: "Bongani Ndlovu",   standAddr: standB002!.addr, standRef: standB002!.ref, allocDate: new Date(Date.now() - 55 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.precious!, appId: appIds.precious!, residentId: precious!.id, standId: standB001!.id, residentName: "Precious Molefe",  standAddr: standB001!.addr, standRef: standB001!.ref, allocDate: new Date(Date.now() - 25 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.sibusiso!, appId: appIds.sibusiso!, residentId: sibusiso!.id, standId: standD001!.id, residentName: "Sibusiso Zulu",    standAddr: standD001!.addr, standRef: standD001!.ref, allocDate: new Date(Date.now() - 35 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.ntombi!,   appId: appIds.ntombi!,   residentId: ntombi!.id,   standId: standD002!.id, residentName: "Ntombi Khumalo",   standAddr: standD002!.addr, standRef: standD002!.ref, allocDate: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.jabu!,     appId: appIds.jabu!,     residentId: jabu!.id,     standId: standE001!.id, residentName: "Jabu Ntuli",       standAddr: standE001!.addr, standRef: standE001!.ref, allocDate: new Date(Date.now() - 45 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.moses!,    appId: appIds.moses!,    residentId: moses!.id,    standId: standE002!.id, residentName: "Moses Chauke",     standAddr: standE002!.addr, standRef: standE002!.ref, allocDate: new Date(Date.now() - 40 * 86400000).toISOString().slice(0, 10) },
+    { id: ptoIds.florence!, appId: appIds.florence!, residentId: florence!.id, standId: standF001!.id, residentName: "Florence Radebe",  standAddr: standF001!.addr, standRef: standF001!.ref, allocDate: new Date(Date.now() - 22 * 86400000).toISOString().slice(0, 10) },
   ];
 
   for (const p of ptoSeeds) {
@@ -487,7 +590,7 @@ try {
       [p.id, p.appId],
     );
   }
-  console.log(`  ✓ 4 PTOs issued`);
+  console.log(`  ✓ ${ptoSeeds.length} PTOs issued`);
 
   // ── 10. Stand Occupancies ─────────────────────────────────────────────────
 
@@ -498,6 +601,11 @@ try {
     { residentId: sipho!.id,    standId: standA003!.id, ptoId: ptoIds.sipho!    },
     { residentId: bongani!.id,  standId: standB002!.id, ptoId: ptoIds.bongani!  },
     { residentId: precious!.id, standId: standB001!.id, ptoId: ptoIds.precious! },
+    { residentId: sibusiso!.id, standId: standD001!.id, ptoId: ptoIds.sibusiso! },
+    { residentId: ntombi!.id,   standId: standD002!.id, ptoId: ptoIds.ntombi!   },
+    { residentId: jabu!.id,     standId: standE001!.id, ptoId: ptoIds.jabu!     },
+    { residentId: moses!.id,    standId: standE002!.id, ptoId: ptoIds.moses!    },
+    { residentId: florence!.id, standId: standF001!.id, ptoId: ptoIds.florence! },
   ];
 
   for (const occ of occupancies) {
@@ -511,15 +619,25 @@ try {
       [occ.standId, occ.residentId, occ.ptoId],
     );
   }
-  console.log(`  ✓ 4 stand occupancies`);
+  console.log(`  ✓ ${occupancies.length} stand occupancies`);
 
   // ── 11. Resale Listings ───────────────────────────────────────────────────
 
   console.log("→ Seeding resale listings…");
 
-  const listingIds = { bongani: randomUUID(), precious: randomUUID() };
+  const listingIds = {
+    bongani:  randomUUID(),
+    precious: randomUUID(),
+    thabo:    randomUUID(),
+    sipho:    randomUUID(),
+    sibusiso: randomUUID(),
+    ntombi:   randomUUID(),
+    jabu:     randomUUID(),
+    moses:    randomUUID(),
+    florence: randomUUID(),
+  };
 
-  // Bongani — live listing for built property
+  // Bongani — live listing, built property (Ikageng, 290m²)
   await client.query(
     `INSERT INTO "${SCHEMA}".resale_listings
        (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
@@ -531,7 +649,7 @@ try {
     [listingIds.bongani, bongani!.id, standB002!.id, ptoIds.bongani],
   );
 
-  // Precious — draft listing for vacant stand
+  // Precious — draft listing, vacant stand
   await client.query(
     `INSERT INTO "${SCHEMA}".resale_listings
        (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
@@ -541,6 +659,90 @@ try {
        false,'draft',NOW() + INTERVAL '90 days',250,NOW())
      ON CONFLICT (id) DO NOTHING`,
     [listingIds.precious, precious!.id, standB001!.id, ptoIds.precious],
+  );
+
+  // Thabo — live listing, vacant stand (Boomplaats, 450m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'vacant_stand',125000,
+       'Spacious 450m² stand in Boomplaats Section. Level ground, good sun, close to community water point and school. Ideal for a family home. Selling to upgrade to larger stand.',
+       true,'live',NOW() + INTERVAL '75 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.thabo, thabo!.id, standA001!.id, ptoIds.thabo],
+  );
+
+  // Sipho — live listing, built property (Extension 6, 520m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'built_property',240000,
+       'Established home on 520m² stand in Extension 6, Temba. 4 rooms including separate kitchen. Brick and mortar, plastered walls. Water connected. Large yard with shade trees. Family relocating to Johannesburg.',
+       false,'live',NOW() + INTERVAL '90 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.sipho, sipho!.id, standA003!.id, ptoIds.sipho],
+  );
+
+  // Sibusiso — live listing, built property (KwaMhlanga, 350m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'built_property',155000,
+       '2-room brick dwelling on Stand D-001 in Mhlanga Section, KwaMhlanga. Corrugated roof, cemented floor, indoor water connection. Neat yard, close to taxi route and shops. Ready to move in.',
+       true,'live',NOW() + INTERVAL '60 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.sibusiso, sibusiso!.id, standD001!.id, ptoIds.sibusiso],
+  );
+
+  // Ntombi — live listing, vacant stand (KwaMhlanga, 480m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'vacant_stand',90000,
+       'Clean 480m² stand in KwaMhlanga. Fenced on two sides. Walking distance to clinic and primary school. Water access point at road. Good for first-time builder.',
+       true,'live',NOW() + INTERVAL '80 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.ntombi, ntombi!.id, standD002!.id, ptoIds.ntombi],
+  );
+
+  // Jabu — live listing, built property on business stand (Siyabuswa, 820m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'built_property',480000,
+       'Prime business stand with existing structure in Siyabuswa Business Park. 820m², currently operating as a spaza and tuck shop. Main road frontage, high foot traffic. Seller retiring — turnkey opportunity for small business owner.',
+       false,'live',NOW() + INTERVAL '90 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.jabu, jabu!.id, standE001!.id, ptoIds.jabu],
+  );
+
+  // Moses — live listing, vacant farming stand (Doornkop, 1500m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'vacant_stand',62000,
+       '1,500m² farming stand in Doornkop Agricultural Area. Previously used for vegetable growing. Good soil, seasonal stream nearby. Suitable for subsistence or small commercial farming. Selling to relocate family.',
+       true,'live',NOW() + INTERVAL '120 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.moses, moses!.id, standE002!.id, ptoIds.moses],
+  );
+
+  // Florence — live listing, vacant residential stand (Enkangala, 325m²)
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_listings
+       (id, seller_resident_id, stand_id, pto_id, listing_type, asking_price_zar,
+        description, negotiable, status, expires_at, commission_basis_points, updated_at)
+     VALUES ($1,$2,$3,$4,'vacant_stand',78000,
+       'Affordable 325m² stand in Enkangala Section. Quiet residential area, close to community hall and crèche. Level plot, suitable for a starter home. Motivated seller — price negotiable for quick sale.',
+       true,'live',NOW() + INTERVAL '75 days',250,NOW())
+     ON CONFLICT (id) DO NOTHING`,
+    [listingIds.florence, florence!.id, standF001!.id, ptoIds.florence],
   );
 
   // Resale offer from Lindiwe on Bongani's listing
@@ -553,42 +755,254 @@ try {
     [listingIds.bongani, lindiwe!.id],
   );
 
-  console.log(`  ✓ 2 resale listings, 1 offer`);
+  // Offer from Nomsa on Sibusiso's listing
+  await client.query(
+    `INSERT INTO "${SCHEMA}".resale_offers (id, listing_id, buyer_resident_id, offer_amount_zar, status)
+     SELECT gen_random_uuid(), $1, $2, 148000, 'submitted'
+     WHERE NOT EXISTS (
+       SELECT 1 FROM "${SCHEMA}".resale_offers WHERE listing_id = $1 AND buyer_resident_id = $2
+     )`,
+    [listingIds.sibusiso, nomsa!.id],
+  );
+
+  console.log(`  ✓ 9 resale listings (8 live, 1 draft), 2 offers`);
 
   // ── 12. Service Providers (public schema) ─────────────────────────────────
+  // Fixed UUIDs so re-running the seed is idempotent (ON CONFLICT (id) DO NOTHING).
+  // Covers all 11 service categories: building, bricklaying, fencing, plumbing,
+  // electrical, repairs, gardening, cleaning, security, borehole, architecture.
 
   console.log("→ Seeding service providers…");
 
   const providers = [
+    // ── building ───────────────────────────────────────────────────────────
     {
-      id: randomUUID(), businessName: "Ndebele Build & Repair",
+      id: "a1b2c3d4-0001-4000-8000-000000000001",
+      businessName: "Ndebele Build & Repair",
+      cipc: "2018/123456/07", vat: null,
       categories: ["building", "bricklaying", "fencing"],
       coverage: [TENANT_SLUG], status: "verified",
       bank: { accountHolder: "Ndebele Build & Repair CC", bankName: "FNB", accountNumber: "62123456789", branchCode: "250655" },
     },
     {
-      id: randomUUID(), businessName: "Mabena Plumbing Services",
+      id: "a1b2c3d4-0002-4000-8000-000000000002",
+      businessName: "Mopani Construction (Pty) Ltd",
+      cipc: "2015/087432/23", vat: "4120198765",
+      categories: ["building", "bricklaying"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Mopani Construction Pty Ltd", bankName: "Absa", accountNumber: "4082345678", branchCode: "632005" },
+    },
+    {
+      id: "a1b2c3d4-0003-4000-8000-000000000003",
+      businessName: "Thabo Constructions CC",
+      cipc: "2020/234501/07", vat: null,
+      categories: ["building"],
+      coverage: [TENANT_SLUG], status: "documents_submitted",
+      bank: { accountHolder: "Thabo Constructions CC", bankName: "Capitec", accountNumber: "1038765432", branchCode: "470010" },
+    },
+
+    // ── bricklaying ────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0004-4000-8000-000000000004",
+      businessName: "Dikgale Bricklaying & Plastering",
+      cipc: "2019/056789/07", vat: null,
+      categories: ["bricklaying", "repairs"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "J Dikgale", bankName: "Nedbank", accountNumber: "1023456789", branchCode: "198765" },
+    },
+    {
+      id: "a1b2c3d4-0005-4000-8000-000000000005",
+      businessName: "Solid Brick Solutions",
+      cipc: "2021/301245/07", vat: null,
+      categories: ["bricklaying"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: null,
+    },
+
+    // ── fencing ────────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0006-4000-8000-000000000006",
+      businessName: "SecureFence & Gates SA",
+      cipc: "2017/198234/23", vat: "4310276543",
+      categories: ["fencing"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "SecureFence & Gates SA (Pty) Ltd", bankName: "Standard Bank", accountNumber: "0512345610", branchCode: "051001" },
+    },
+    {
+      id: "a1b2c3d4-0007-4000-8000-000000000007",
+      businessName: "Lekota Fencing Specialists",
+      cipc: "2022/412098/07", vat: null,
+      categories: ["fencing", "building"],
+      coverage: [TENANT_SLUG], status: "documents_submitted",
+      bank: null,
+    },
+
+    // ── plumbing ───────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0008-4000-8000-000000000008",
+      businessName: "Mabena Plumbing Services",
+      cipc: "2016/074321/07", vat: null,
       categories: ["plumbing"],
       coverage: [TENANT_SLUG], status: "verified",
       bank: { accountHolder: "T Mabena", bankName: "Standard Bank", accountNumber: "051234567", branchCode: "051001" },
     },
     {
-      id: randomUUID(), businessName: "Royal Greens Landscaping",
-      categories: ["gardening", "cleaning"],
+      id: "a1b2c3d4-0009-4000-8000-000000000009",
+      businessName: "Tshwane Water Works",
+      cipc: "2014/321987/23", vat: "4891023456",
+      categories: ["plumbing", "borehole"],
       coverage: [TENANT_SLUG], status: "verified",
-      bank: null,
+      bank: { accountHolder: "Tshwane Water Works (Pty) Ltd", bankName: "FNB", accountNumber: "62098765432", branchCode: "250655" },
     },
     {
-      id: randomUUID(), businessName: "Sithole Electrical Contractors",
+      id: "a1b2c3d4-0010-4000-8000-000000000010",
+      businessName: "Mokoena Pipe & Drain",
+      cipc: "2023/509876/07", vat: null,
+      categories: ["plumbing", "repairs"],
+      coverage: [TENANT_SLUG], status: "documents_submitted",
+      bank: { accountHolder: "S Mokoena", bankName: "Capitec", accountNumber: "1456789012", branchCode: "470010" },
+    },
+
+    // ── electrical ─────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0011-4000-8000-000000000011",
+      businessName: "Sithole Electrical Contractors",
+      cipc: "2019/187654/07", vat: null,
+      categories: ["electrical"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Sithole Electrical CC", bankName: "Nedbank", accountNumber: "1034567890", branchCode: "198765" },
+    },
+    {
+      id: "a1b2c3d4-0012-4000-8000-000000000012",
+      businessName: "PowerLink Electrical (Pty) Ltd",
+      cipc: "2016/243109/23", vat: "4230987654",
+      categories: ["electrical"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "PowerLink Electrical Pty Ltd", bankName: "Absa", accountNumber: "4056789012", branchCode: "632005" },
+    },
+    {
+      id: "a1b2c3d4-0013-4000-8000-000000000013",
+      businessName: "Bright Spark Solar & Wiring",
+      cipc: "2021/678432/07", vat: null,
       categories: ["electrical"],
       coverage: [TENANT_SLUG], status: "documents_submitted",
       bank: null,
     },
+
+    // ── repairs ────────────────────────────────────────────────────────────
     {
-      id: randomUUID(), businessName: "Clean Horizons Co-op",
+      id: "a1b2c3d4-0014-4000-8000-000000000014",
+      businessName: "Handy Hands General Repairs",
+      cipc: "2020/390123/07", vat: null,
+      categories: ["repairs"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Handy Hands CC", bankName: "Capitec", accountNumber: "1567890123", branchCode: "470010" },
+    },
+    {
+      id: "a1b2c3d4-0015-4000-8000-000000000015",
+      businessName: "Fix-It Fast Home Maintenance",
+      cipc: "2022/501876/07", vat: null,
+      categories: ["repairs", "plumbing", "electrical"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Fix-It Fast CC", bankName: "FNB", accountNumber: "62876543210", branchCode: "250655" },
+    },
+
+    // ── gardening ──────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0016-4000-8000-000000000016",
+      businessName: "Royal Greens Landscaping",
+      cipc: "2018/654321/07", vat: null,
+      categories: ["gardening", "cleaning"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Royal Greens Landscaping CC", bankName: "Standard Bank", accountNumber: "0598765432", branchCode: "051001" },
+    },
+    {
+      id: "a1b2c3d4-0017-4000-8000-000000000017",
+      businessName: "Mabele Garden & Outdoor Services",
+      cipc: "2021/765432/07", vat: null,
+      categories: ["gardening"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: null,
+    },
+
+    // ── cleaning ───────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0018-4000-8000-000000000018",
+      businessName: "Clean Horizons Co-op",
+      cipc: "2017/432198/07", vat: null,
       categories: ["cleaning", "security"],
       coverage: [TENANT_SLUG], status: "verified",
       bank: { accountHolder: "Clean Horizons Co-op", bankName: "Capitec", accountNumber: "1234512345", branchCode: "470010" },
+    },
+    {
+      id: "a1b2c3d4-0019-4000-8000-000000000019",
+      businessName: "Spotless Domestic Services",
+      cipc: "2020/876543/07", vat: null,
+      categories: ["cleaning"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Spotless Domestic CC", bankName: "Nedbank", accountNumber: "1089012345", branchCode: "198765" },
+    },
+
+    // ── security ───────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0020-4000-8000-000000000020",
+      businessName: "Kgosi Security Solutions",
+      cipc: "2015/210987/23", vat: "4560123789",
+      categories: ["security"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Kgosi Security Solutions (Pty) Ltd", bankName: "Absa", accountNumber: "4012345678", branchCode: "632005" },
+    },
+    {
+      id: "a1b2c3d4-0021-4000-8000-000000000021",
+      businessName: "Shield Guard Services CC",
+      cipc: "2019/345678/07", vat: null,
+      categories: ["security"],
+      coverage: [TENANT_SLUG], status: "documents_submitted",
+      bank: null,
+    },
+
+    // ── borehole ───────────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0022-4000-8000-000000000022",
+      businessName: "Deep Earth Borehole Drilling",
+      cipc: "2013/098765/23", vat: "4780234561",
+      categories: ["borehole"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Deep Earth Drilling (Pty) Ltd", bankName: "FNB", accountNumber: "62345678901", branchCode: "250655" },
+    },
+    {
+      id: "a1b2c3d4-0023-4000-8000-000000000023",
+      businessName: "Limpopo Water Solutions",
+      cipc: "2016/567890/07", vat: null,
+      categories: ["borehole", "plumbing"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Limpopo Water Solutions CC", bankName: "Standard Bank", accountNumber: "0534567890", branchCode: "051001" },
+    },
+
+    // ── architecture ──────────────────────────────────────────────────────
+    {
+      id: "a1b2c3d4-0024-4000-8000-000000000024",
+      businessName: "Mabena & Associates Architects",
+      cipc: "2012/456789/23", vat: "4190345672",
+      categories: ["architecture"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Mabena & Associates (Pty) Ltd", bankName: "Nedbank", accountNumber: "1012345678", branchCode: "198765" },
+    },
+    {
+      id: "a1b2c3d4-0025-4000-8000-000000000025",
+      businessName: "Ubuntu Design Studio",
+      cipc: "2018/789012/23", vat: "4350678912",
+      categories: ["architecture", "building"],
+      coverage: [TENANT_SLUG], status: "verified",
+      bank: { accountHolder: "Ubuntu Design Studio (Pty) Ltd", bankName: "Absa", accountNumber: "4067890123", branchCode: "632005" },
+    },
+    {
+      id: "a1b2c3d4-0026-4000-8000-000000000026",
+      businessName: "Khaya Plans & Designs",
+      cipc: "2021/890123/07", vat: null,
+      categories: ["architecture"],
+      coverage: [TENANT_SLUG], status: "documents_submitted",
+      bank: null,
     },
   ];
 
@@ -596,17 +1010,27 @@ try {
     const bankEnc = p.bank ? JSON.stringify(encryptBankDetails(p.bank)) : null;
     await client.query(
       `INSERT INTO service_providers
-         (id, business_name, primary_contact_user_id, categories, geographic_coverage,
-          verification_status, bank_details_encrypted, created_by_user_id, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,NOW())
+         (id, business_name, cipc_number, vat_number, primary_contact_user_id, categories,
+          geographic_coverage, verification_status, bank_details_encrypted, created_by_user_id, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,NOW())
        ON CONFLICT (id) DO NOTHING`,
-      [p.id, p.businessName, founderUserId, p.categories, p.coverage, p.status, bankEnc, founderUserId],
+      [p.id, p.businessName, p.cipc ?? null, p.vat ?? null, founderUserId, p.categories,
+       p.coverage, p.status, bankEnc, founderUserId],
     );
   }
-  console.log(`  ✓ ${providers.length} service providers`);
+  // Link dev provider account to "Ndebele Build & Repair" so provider@ndebele.dev can log in
+  await client.query(
+    `UPDATE service_providers SET primary_contact_user_id = $1 WHERE id = 'a1b2c3d4-0001-4000-8000-000000000001'`,
+    [providerUserId],
+  );
 
-  // Grab IDs for bookings
-  const [provNdebele, provMabena, provRoyalGreens] = providers;
+  console.log(`  ✓ ${providers.length} service providers across all categories`);
+  console.log(`  ✓ provider@ndebele.dev linked to "Ndebele Build & Repair"`);
+
+  // Grab fixed IDs for bookings (same positions as before)
+  const provNdebele   = providers[0]!;  // building
+  const provMabena    = providers[7]!;  // plumbing
+  const provRoyalGreens = providers[15]!; // gardening
 
   // ── 13. Suppliers (public schema) ─────────────────────────────────────────
 
@@ -727,18 +1151,19 @@ try {
   soldier@ndebele.dev   → foot_soldier      (register residents and stands)
   officer@ndebele.dev   → land_officer      (process land applications only)
   resident@ndebele.dev  → resident          (submit applications, view own data)
+  provider@ndebele.dev  → provider          (Ndebele Build & Repair — web-provider portal)
 
   Seeded data
   ──────────────────────────────────────────────────────────
-  Residents:         8  (Thabo, Nomsa, Sipho, Zanele, Bongani, Lindiwe, Johannes, Precious)
-  Stands:            6  (A-001 to C-001, Hammanskraal / Temba area)
-  Applications:      6  (1 submitted, 4 approved, 1 rejected)
-  PTOs:              4  (Thabo, Sipho, Bongani, Precious)
-  Stand occupancies: 4
-  Resale listings:   2  (1 live, 1 draft) + 1 offer
-  Service providers: 5  (building, plumbing, gardening, electrical, cleaning)
+  Residents:         13 (Thabo, Nomsa, Sipho, Zanele, Bongani, Lindiwe, Johannes, Precious, Sibusiso, Ntombi, Jabu, Moses, Florence)
+  Stands:            12 (A-001 to F-002, Hammanskraal / Temba / KwaNdebele — residential, business, farming, community types)
+  Applications:      11 (1 submitted, 9 approved, 1 rejected)
+  PTOs:              9  (Thabo, Sipho, Bongani, Precious, Sibusiso, Ntombi, Jabu, Moses, Florence)
+  Stand occupancies: 9
+  Resale listings:   9  (8 live, 1 draft) + 2 offers
+  Service providers: 26 (all 11 categories: building, bricklaying, fencing, plumbing, electrical, repairs, gardening, cleaning, security, borehole, architecture)
   Suppliers:         3  (MassBuild, Builders Express, Agri-Build)
-  Service bookings:  3  (completed, quoted, quote_requested)
+  Service bookings:  4  (completed, quoted, quote_requested, quoted)
 
   Tenant slug: ${TENANT_SLUG}
 `);

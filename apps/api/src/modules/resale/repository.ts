@@ -1,8 +1,8 @@
-import type { ResaleListing, ResaleOffer } from "../../generated/tenant-client/index.js";
+import type { ResaleListing, ResaleOffer, Stand } from "../../generated/tenant-client/index.js";
 import { getPrismaClient } from "../../shared/database/index.js";
 import type { TenantContext } from "../../shared/database/tenant-context.js";
 
-export type { ResaleListing, ResaleOffer };
+export type { ResaleListing, ResaleOffer, Stand };
 
 export interface CreateListingData {
   sellerResidentId: string;
@@ -26,17 +26,17 @@ export async function createListing(ctx: TenantContext, data: CreateListingData)
   return getPrismaClient(ctx).resaleListing.create({ data });
 }
 
-export async function findListing(ctx: TenantContext, id: string): Promise<(ResaleListing & { offers: ResaleOffer[] }) | null> {
+export async function findListing(ctx: TenantContext, id: string): Promise<(ResaleListing & { stand: Stand; offers: ResaleOffer[] }) | null> {
   return getPrismaClient(ctx).resaleListing.findUnique({
     where: { id },
-    include: { offers: { orderBy: { createdAt: "desc" } } },
-  });
+    include: { stand: true, offers: { orderBy: { createdAt: "desc" } } },
+  }) as Promise<(ResaleListing & { stand: Stand; offers: ResaleOffer[] }) | null>;
 }
 
 export async function listListings(
   ctx: TenantContext,
   filter: ListListingsFilter,
-): Promise<{ listings: ResaleListing[]; total: number }> {
+): Promise<{ listings: (ResaleListing & { stand: Stand })[]; total: number }> {
   const prisma = getPrismaClient(ctx);
   const where = {
     ...(filter.status !== undefined && { status: filter.status }),
@@ -45,13 +45,14 @@ export async function listListings(
   const [listings, total] = await prisma.$transaction([
     prisma.resaleListing.findMany({
       where,
+      include: { stand: true },
       orderBy: { createdAt: "desc" },
       skip: (filter.page - 1) * filter.pageSize,
       take: filter.pageSize,
     }),
     prisma.resaleListing.count({ where }),
   ]);
-  return { listings, total };
+  return { listings: listings as (ResaleListing & { stand: Stand })[], total };
 }
 
 export async function updateListingStatus(

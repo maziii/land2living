@@ -59,13 +59,14 @@ export async function fetchStandVillages(
 
 export async function fetchStands(
   apiFetch: (path: string, init?: RequestInit) => Promise<Response>,
-  params: { page?: number; pageSize?: number; villageOrSection?: string; search?: string },
+  params: { page?: number; pageSize?: number; villageOrSection?: string; search?: string; availableOnly?: boolean },
 ): Promise<StandListResponse> {
   const qs = new URLSearchParams();
   if (params.page) qs.set("page", String(params.page));
   if (params.pageSize) qs.set("pageSize", String(params.pageSize));
   if (params.villageOrSection) qs.set("villageOrSection", params.villageOrSection);
   if (params.search) qs.set("search", params.search);
+  if (params.availableOnly) qs.set("availableOnly", "true");
 
   const res = await apiFetch(`/api/v1/stands?${qs.toString()}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);

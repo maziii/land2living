@@ -21,6 +21,11 @@ const mockListing = (overrides: Partial<ListingResponse> = {}): ListingResponse 
   paymentLinkUrl: "https://pay.mock.local/checkout/mock_pay_listing-1",
   escrowPaymentId: "mock_pay_listing-1_123",
   paymentReceivedAt: null,
+  standAddress: "Stand A-001",
+  standVillage: "Hammanskraal",
+  standAreaSqm: 300,
+  standType: "residential",
+  standReference: "A-001",
   ...overrides,
 });
 

@@ -114,6 +114,7 @@ export async function listStands(
     ...(query.villageOrSection !== undefined && { villageOrSection: query.villageOrSection }),
     ...(query.search !== undefined && { search: query.search }),
     ...(bbox !== undefined && { bbox }),
+    ...(query.availableOnly   && { availableOnly: true }),
   });
 
   return {

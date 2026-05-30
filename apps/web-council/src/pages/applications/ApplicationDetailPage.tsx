@@ -11,9 +11,12 @@ import {
   markActive,
   withdrawApplication,
   uploadStandPhoto,
+  issuePTO,
   type ApplicationSummary,
+  type ApplicationStatus,
 } from "../../api/applications.js";
 import { fetchStands, type StandSummary } from "../../api/stands.js";
+import { openPTOPDF } from "../../api/ptos.js";
 import { StatusBadge } from "../../components/StatusBadge.js";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -32,6 +35,73 @@ function applicantName(a: ApplicationSummary) {
 }
 
 const TERMINAL = new Set(["active", "rejected", "withdrawn"]);
+
+// ── Process stepper ───────────────────────────────────────────────────────────
+
+const WORKFLOW_STEPS = [
+  "Submitted",
+  "Under Review",
+  "Decision",
+  "Stand Offered",
+  "Offer Accepted",
+  "PTO Active",
+];
+
+function statusToStepIndex(status: ApplicationStatus): number {
+  switch (status) {
+    case "submitted":         return 0;
+    case "under_review":      return 1;
+    case "approved":
+    case "deferred":          return 2;
+    case "stand_offered":
+    case "viewing_requested":
+    case "offer_rejected":    return 3;
+    case "offer_accepted":    return 4;
+    case "active":            return 5;
+    default:                  return -1;
+  }
+}
+
+function CheckIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+function ProcessStepper({ status }: { status: ApplicationStatus }) {
+  const currentStep = statusToStepIndex(status);
+  if (currentStep === -1) return null;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
+      <div className="flex items-start">
+        {WORKFLOW_STEPS.map((label, i) => (
+          <div key={label} className={`flex items-start ${i < WORKFLOW_STEPS.length - 1 ? "flex-1 min-w-0" : ""}`}>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+                i < currentStep   ? "bg-forest-600 text-white" :
+                i === currentStep ? "bg-forest-600 text-white ring-4 ring-forest-100" :
+                                    "bg-gray-100 text-gray-400"
+              }`}>
+                {i < currentStep ? <CheckIcon /> : i + 1}
+              </div>
+              <span className={`text-xs text-center leading-tight hidden sm:block ${
+                i <= currentStep ? "text-gray-700 font-medium" : "text-gray-400"
+              }`}>{label}</span>
+            </div>
+            {i < WORKFLOW_STEPS.length - 1 && (
+              <div className={`flex-1 h-0.5 mt-3.5 mx-1 shrink-0 ${
+                i < currentStep ? "bg-forest-500" : "bg-gray-200"
+              }`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -194,7 +264,6 @@ function OfferStandPanel({
           : "Select an available stand from the register, upload photos, and write a message. The applicant will review the offer and can accept, request a viewing, or ask for a different stand."}
       </p>
 
-      {/* Stand picker */}
       <div>
         <label className="block text-xs text-gray-500 mb-1">Stand</label>
         <select
@@ -212,7 +281,6 @@ function OfferStandPanel({
         </select>
       </div>
 
-      {/* Photo upload */}
       <div>
         <label className="block text-xs text-gray-500 mb-1">Photos of the stand (optional)</label>
         {previews.length > 0 && (
@@ -240,7 +308,6 @@ function OfferStandPanel({
         )}
       </div>
 
-      {/* Message */}
       <div>
         <label className="block text-xs text-gray-500 mb-1">Message to applicant</label>
         <textarea
@@ -263,11 +330,7 @@ function OfferStandPanel({
   );
 }
 
-function StandOfferedPanel({
-  app,
-}: {
-  app: ApplicationSummary;
-}) {
+function StandOfferedPanel({ app }: { app: ApplicationSummary }) {
   const photoCount = app.documents.filter(d => d.documentType === "stand_photo").length;
 
   return (
@@ -295,10 +358,7 @@ function StandOfferedPanel({
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-1">
           <p className="text-xs text-amber-700 font-medium">Want to invite for an in-person viewing?</p>
           <p className="text-xs text-amber-600">Contact the applicant directly and arrange a visit. They can then confirm acceptance from their app.</p>
-          <a
-            href={`tel:${app.applicantPhone}`}
-            className="text-sm font-semibold text-forest-700 hover:underline block mt-1"
-          >
+          <a href={`tel:${app.applicantPhone}`} className="text-sm font-semibold text-forest-700 hover:underline block mt-1">
             {app.applicantPhone}
           </a>
         </div>
@@ -332,22 +392,175 @@ function ViewingRequestedPanel({ app }: { app: ApplicationSummary }) {
   );
 }
 
-function OfferAcceptedPanel({ onMarkActive, saving }: { onMarkActive: () => void; saving: boolean }) {
+// ── Step 4: Payment, PTO issuance, and signing ───────────────────────────────
+
+function SubStepIndicator({ current }: { current: 0 | 1 | 2 }) {
+  const labels = ["Confirm payment", "Generate PTO", "Sign & register"];
   return (
-    <Panel title="Step 4 — Confirm payment & PTO signing" accent>
-      <p className="text-sm text-gray-600">
-        The applicant has accepted the stand. They should visit the council office to pay the applicable fees and sign their Permission to Occupy (PTO) document.
-      </p>
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
-        Once payment is received and the PTO is physically signed, click below to activate the PTO and close this application.
-      </div>
-      <button
-        onClick={onMarkActive}
-        disabled={saving}
-        className="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white px-5 py-2 rounded-lg text-sm font-medium"
-      >
-        {saving ? "Saving…" : "Confirm — payment received & PTO signed"}
-      </button>
+    <div className="flex items-start mb-4">
+      {labels.map((label, i) => (
+        <div key={label} className={`flex items-start ${i < labels.length - 1 ? "flex-1 min-w-0" : ""}`}>
+          <div className="flex flex-col items-center gap-1">
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
+              i < current  ? "bg-green-600 text-white" :
+              i === current ? "bg-forest-600 text-white ring-2 ring-forest-100" :
+                              "bg-gray-100 text-gray-400"
+            }`}>
+              {i < current ? <CheckIcon /> : i + 1}
+            </div>
+            <span className={`text-xs text-center leading-tight hidden sm:block ${
+              i <= current ? "text-gray-700" : "text-gray-400"
+            }`}>{label}</span>
+          </div>
+          {i < labels.length - 1 && (
+            <div className={`flex-1 h-0.5 mt-3 mx-1 shrink-0 ${i < current ? "bg-green-400" : "bg-gray-200"}`} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OfferAcceptedPanel({
+  existingPtoId,
+  canIssuePTO,
+  onIssuePTO,
+  onMarkActive,
+  saving,
+  apiFetch,
+}: {
+  existingPtoId: string | null;
+  canIssuePTO: boolean;
+  onIssuePTO: () => Promise<{ id: string }>;
+  onMarkActive: () => void;
+  saving: boolean;
+  apiFetch: (input: string, init?: RequestInit) => Promise<Response>;
+}) {
+  const [subStep, setSubStep]     = useState<0 | 1 | 2>(existingPtoId ? 2 : 0);
+  const [issuedPtoId, setIssuedPtoId] = useState<string | null>(existingPtoId);
+  const [issuing, setIssuing]     = useState(false);
+  const [issueError, setIssueError] = useState<string | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfError, setPdfError]   = useState<string | null>(null);
+
+  async function handleOpenPDF(ptoId: string) {
+    setPdfLoading(true);
+    setPdfError(null);
+    try {
+      await openPTOPDF(apiFetch, ptoId);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : "Failed to open PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
+  async function handleGeneratePTO() {
+    setIssuing(true);
+    setIssueError(null);
+    try {
+      const pto = await onIssuePTO();
+      setIssuedPtoId(pto.id);
+      setSubStep(2);
+    } catch (err) {
+      setIssueError(err instanceof Error ? err.message : "Failed to generate PTO");
+    } finally {
+      setIssuing(false);
+    }
+  }
+
+  return (
+    <Panel title="Step 4 — Payment, PTO issuance & signing" accent>
+      <SubStepIndicator current={subStep} />
+
+      {subStep === 0 && (
+        <>
+          <p className="text-sm text-gray-600">
+            The applicant has accepted the stand offer. Confirm that the applicable fees have been received at the council office before proceeding to PTO generation.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+            Collect all applicable stand fees before generating the PTO document.
+          </div>
+          <button
+            onClick={() => setSubStep(1)}
+            className="bg-forest-600 hover:bg-forest-700 text-white px-5 py-2 rounded-lg text-sm font-medium"
+          >
+            Payment confirmed — proceed to PTO generation
+          </button>
+        </>
+      )}
+
+      {subStep === 1 && (
+        <>
+          <p className="text-sm text-gray-600">
+            Generate the cryptographically signed Permission to Occupy document. It will be added to the PTO register and a signed PDF will be securely stored.
+          </p>
+          {!canIssuePTO && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+              Only a Council Secretary or Founder can generate the PTO. Ask a council secretary to complete this step.
+            </div>
+          )}
+          {issueError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{issueError}</div>
+          )}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setSubStep(0)}
+              className="border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg text-sm font-medium"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() => void handleGeneratePTO()}
+              disabled={!canIssuePTO || issuing || saving}
+              className="bg-forest-600 hover:bg-forest-700 disabled:opacity-60 text-white px-5 py-2 rounded-lg text-sm font-medium"
+            >
+              {issuing ? "Generating…" : "Generate & sign PTO"}
+            </button>
+          </div>
+        </>
+      )}
+
+      {subStep === 2 && issuedPtoId && (
+        <>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-3">
+            <p className="text-sm font-semibold text-green-800">PTO generated and registered</p>
+            <p className="font-mono text-xs text-green-700">Ref: {issuedPtoId.slice(0, 8).toUpperCase()}</p>
+            <div className="flex items-center flex-wrap gap-2 pt-1">
+              <button
+                onClick={() => void handleOpenPDF(issuedPtoId)}
+                disabled={pdfLoading}
+                className="inline-flex items-center gap-1.5 text-xs text-forest-700 border border-forest-300 bg-white rounded-lg px-3 py-1.5 hover:bg-forest-50 disabled:opacity-60"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {pdfLoading ? "Opening…" : "Preview PTO PDF"}
+              </button>
+              <Link
+                to={`/dashboard/land/ptos/${issuedPtoId}`}
+                className="inline-flex items-center gap-1.5 text-xs text-forest-700 border border-forest-300 bg-white rounded-lg px-3 py-1.5 hover:bg-forest-50"
+              >
+                View in PTO Register →
+              </Link>
+            </div>
+            {pdfError && <p className="text-xs text-red-600">{pdfError}</p>}
+          </div>
+          <p className="text-sm text-gray-600">
+            Present the PTO document to the applicant at the council premises. Once the applicant has reviewed and signed the document, click below to activate and close this application.
+          </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+            Confirm the applicant has signed the PTO document before completing.
+          </div>
+          <button
+            onClick={onMarkActive}
+            disabled={saving}
+            className="bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white px-5 py-2 rounded-lg text-sm font-medium"
+          >
+            {saving ? "Saving…" : "Confirm signed — activate & close application"}
+          </button>
+        </>
+      )}
     </Panel>
   );
 }
@@ -364,13 +577,14 @@ export function ApplicationDetailPage() {
   const [error, setError]             = useState<string | null>(null);
   const [saving, setSaving]           = useState(false);
 
-  const canAct = ["council_secretary", "land_officer", "founder"].includes(auth?.claims.role ?? "");
+  const canAct      = ["council_secretary", "land_officer", "founder"].includes(auth?.claims.role ?? "");
+  const canIssuePTO = ["council_secretary", "founder"].includes(auth?.claims.role ?? "");
 
   useEffect(() => {
     if (!id) return;
     Promise.all([
       fetchApplication(apiFetch, id),
-      fetchStands(apiFetch, { pageSize: 100 }),
+      fetchStands(apiFetch, { pageSize: 100, availableOnly: true }),
     ])
       .then(([app, standsRes]) => { setApplication(app); setStands(standsRes.stands); })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load"))
@@ -425,6 +639,9 @@ export function ApplicationDetailPage() {
         )}
       </div>
 
+      {/* Process stepper */}
+      <ProcessStepper status={s} />
+
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 text-sm">{error}</div>
       )}
@@ -432,8 +649,8 @@ export function ApplicationDetailPage() {
       {/* Applicant details */}
       <Panel title="Applicant">
         <div className="grid grid-cols-2 gap-4">
-          <Field label="Name"      value={applicantName(a)} />
-          <Field label="Phone"     value={a.applicantPhone ?? "—"} />
+          <Field label="Name"         value={applicantName(a)} />
+          <Field label="Phone"        value={a.applicantPhone ?? "—"} />
           <Field label="Resident ID"  value={a.applicantResidentId} mono />
           <Field label="Household"    value={`${a.householdSize} ${a.householdSize === 1 ? "person" : "people"}`} />
         </div>
@@ -579,15 +796,43 @@ export function ApplicationDetailPage() {
 
       {canAct && s === "offer_accepted" && (
         <OfferAcceptedPanel
-          saving={saving}
+          existingPtoId={a.ptoId}
+          canIssuePTO={canIssuePTO}
+          onIssuePTO={() => issuePTO(apiFetch, id!)}
           onMarkActive={() => void act(() => markActive(apiFetch, id!))}
+          saving={saving}
+          apiFetch={apiFetch}
         />
       )}
 
       {s === "active" && (
-        <div className="bg-green-50 rounded-xl border border-green-200 p-5">
-          <p className="font-semibold text-green-800 mb-1">PTO active</p>
-          <p className="text-sm text-green-700">Payment received and PTO signed. This stand is now formally registered.</p>
+        <div className="bg-green-50 rounded-xl border border-green-200 p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center shrink-0">
+              <CheckIcon />
+            </div>
+            <p className="font-semibold text-green-800">PTO active — stand formally registered</p>
+          </div>
+          <p className="text-sm text-green-700">Payment received, PTO signed and registered in the digital land register.</p>
+          {a.ptoId && (
+            <div className="flex items-center flex-wrap gap-3 pt-1 border-t border-green-200">
+              <span className="text-xs font-mono text-green-700 bg-green-100 px-2 py-1 rounded">
+                PTO {a.ptoId.slice(0, 8).toUpperCase()}
+              </span>
+              <Link
+                to={`/dashboard/land/ptos/${a.ptoId}`}
+                className="text-xs font-medium text-forest-700 hover:underline"
+              >
+                View PTO record →
+              </Link>
+              <button
+                onClick={() => void openPTOPDF(apiFetch, a.ptoId!)}
+                className="text-xs font-medium text-forest-700 hover:underline"
+              >
+                Download PDF
+              </button>
+            </div>
+          )}
         </div>
       )}
 
